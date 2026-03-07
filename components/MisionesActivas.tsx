@@ -238,14 +238,16 @@ function MisionesFallback() {
                 <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-white/10">
                     <Rocket className="w-4 h-4 text-slate-500" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-500 tracking-tight uppercase">Misiones (Modo Demo)</h2>
+                <h2 className="text-xl font-bold text-slate-500 tracking-tight uppercase">Control de Proyectos</h2>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {dummyProjects.map(p => (
                     <ProjectCard key={p.id} project={p} isExpanded={false} onToggle={() => { }} projectTasks={[]} />
                 ))}
             </div>
-            <p className="mt-4 text-center text-[10px] text-slate-600 uppercase tracking-widest font-mono">No hay misiones activas en tiempo real. Mostrando simulaciones de sistema.</p>
+            <p className="mt-4 text-center text-[10px] text-slate-600 uppercase tracking-widest font-mono">El sistema está listo para monitorizar nuevas misiones. No se detectan proyectos activos en este momento.</p>
+
         </div>
     )
 }

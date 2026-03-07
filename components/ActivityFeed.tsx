@@ -15,7 +15,8 @@ export function ActivityFeed() {
                     <Activity className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                    <h2 className="text-white font-bold text-lg tracking-tight uppercase">Sala de Guerra</h2>
+                    <h2 className="text-white font-bold text-lg tracking-tight uppercase">Registro de Actividad</h2>
+
                     <p className="text-slate-400 text-[10px] font-mono uppercase tracking-widest">Auditoría en Tiempo Real</p>
                 </div>
                 {/* Live indicator */}
