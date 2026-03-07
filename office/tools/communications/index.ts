@@ -16,6 +16,7 @@ export interface SendOptions {
 }
 
 export async function sendMessage(channel: Channel, to: string, text: string, options?: SendOptions, agentId: string = 'system'): Promise<void> {
+    console.log('SEND MESSAGE LLAMADO CON:', { channel, to, text })
     const startTime = Date.now();
     let success = true;
     let errorMsg = '';

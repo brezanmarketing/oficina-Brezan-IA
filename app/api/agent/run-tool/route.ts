@@ -50,6 +50,9 @@ export async function POST(req: NextRequest) {
             executeInput = { language: params.language, code: params.code };
         }
 
+        console.log('PARAMS RECIBIDOS:', JSON.stringify(params))
+        console.log('EXECUTE INPUT:', JSON.stringify(executeInput))
+
         const result = await toolDef.tool.execute(executeInput);
 
         return NextResponse.json({ success: true, result });
