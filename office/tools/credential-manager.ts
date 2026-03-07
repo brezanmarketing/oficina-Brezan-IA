@@ -1,12 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-)
+let _supabase: any = null
+function getSupabase() {
+    if (_supabase) return _supabase
+    _supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
+        process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    )
+    return _supabase
+}
+
 const SECRET = process.env.CREDENTIAL_ENCRYPTION_SECRET || ''
 const cache = new Map<string, { value: string, expires: number }>()
 const TTL = 5 * 60 * 1000 // 5 minutes cache
+
 
 export async function getCredential(
     integration_id: string,
@@ -20,11 +27,12 @@ export async function getCredential(
         console.warn("CREDENTIAL_ENCRYPTION_SECRET NO CONFIGURADO EN EL ENTORNO (Requerido para descifrar).")
     }
 
-    const { data, error } = await supabase.rpc('get_credential', {
+    const { data, error } = await getSupabase().rpc('get_credential', {
         p_integration_id: integration_id,
         p_key_name: key_name,
         p_secret: SECRET
     })
+
 
     if (error || !data) {
         throw new Error(

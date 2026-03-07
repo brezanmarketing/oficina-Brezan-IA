@@ -5,9 +5,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+import { securityLayer } from './phase4/security-layer';
+import { auditLogger } from './phase4/audit-logger';
+
 export interface ToolInstance {
     name: string;
-    execute: (input: any) => Promise<any>;
+    execute: (input: any, agent?: any) => Promise<any>;
 }
 
 export interface ToolRegistration {
@@ -121,6 +124,61 @@ export const Registry: ToolRegistration[] = [
         timeout_ms: 5000
     }
 ];
+
+/**
+ * Ejecuta una herramienta de forma segura, auditada y controlada.
+ */
+export async function executeTool(toolName: string, input: any, agent: any): Promise<any> {
+    const registration = Registry.find(r => r.tool.name === toolName);
+    if (!registration) throw new Error(`Tool ${toolName} not found in registry`);
+
+    const startTime = Date.now();
+    let status: 'success' | 'error' | 'denied' = 'success';
+    let result: any;
+
+    try {
+        // 1. SEGURIDAD: Autorización por rol
+        const auth = await securityLayer.authorize(agent.role, toolName, 'execute', agent.id);
+        if (!auth.granted) {
+            status = 'denied';
+            throw new Error(auth.reason);
+        }
+
+        // 2. SEGURIDAD: Sanitización de Input
+        const sanitizedInput = typeof input === 'string'
+            ? securityLayer.sanitizeInput(input)
+            : JSON.parse(securityLayer.sanitizeInput(JSON.stringify(input)));
+
+        // 3. EJECUCIÓN
+        result = await registration.tool.execute(sanitizedInput, agent);
+
+        // 4. SEGURIDAD: Validación de Output
+        if (typeof result === 'string') {
+            result = securityLayer.validateOutput(result, agent.id);
+        } else if (result && typeof result === 'object') {
+            result = JSON.parse(securityLayer.validateOutput(JSON.stringify(result), agent.id));
+        }
+
+        return result;
+    } catch (err: any) {
+        status = err.message.includes('Acceso denegado') ? 'denied' : 'error';
+        result = { error: err.message };
+        throw err;
+    } finally {
+        const duration = Date.now() - startTime;
+        // 5. AUDITORÍA: Registro inmutable
+        await auditLogger.logToolCall(
+            agent.id,
+            toolName,
+            input,
+            result,
+            duration,
+            status,
+            agent.project_id,
+            agent.task_id
+        );
+    }
+}
 
 export function selectTool(task_description: string): ToolRegistration[] {
     const words: string[] = task_description.toLowerCase().match(/\\b(\\w+)\\b/g) || [];

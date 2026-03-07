@@ -5,6 +5,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+import { modelRouter } from '../phase4/model-router';
+import { costController } from '../phase4/cost-controller';
+
 const PROFILES: Record<string, { role: string, tools: string[], desc: string }> = {
     'Researcher': { role: 'Researcher', tools: ['web-search', 'web-browser'], desc: 'Buscar información, noticias, datos' },
     'Analyst': { role: 'Analyst', tools: ['data-analyzer', 'file-manager'], desc: 'Analizar datos, detectar patrones' },
@@ -14,18 +17,9 @@ const PROFILES: Record<string, { role: string, tools: string[], desc: string }> 
     'Coordinator': { role: 'Coordinator', tools: [], desc: 'Tareas complejas que requieren múltiples tools' }
 };
 
-export function selectModel(task: Task): string {
-    if (task.model_hint === 'fast') return 'gemini-2.5-flash';
-    if (task.model_hint === 'smart') return 'gpt-4o';
-    if (task.model_hint === 'code') return 'gpt-4o';
-    if (task.model_hint === 'vision') return 'gemini-1.5-pro'; // Asumiendo esto
-
-    // Default basado en descripción
-    const descLen = task.description?.length || 0;
-    if (descLen > 500 || task.tools_needed?.includes('data-analyzer') || task.tools_needed?.includes('code-executor')) {
-        return 'gpt-4o';
-    }
-    return 'gemini-2.5-flash';
+export async function getModelForTask(task: Task, budgetRemaining: number = 100): Promise<string> {
+    const selection = await modelRouter.selectModel(task.description, task.model_hint, budgetRemaining);
+    return selection.model;
 }
 
 function determineRole(task: Task): string {
@@ -56,9 +50,9 @@ RESTRICCIONES:
     return base;
 }
 
-export async function spawnAgent(task: Task): Promise<Agent> {
+export async function spawnAgent(task: Task, budgetRemaining: number = 100): Promise<Agent> {
     const role = determineRole(task);
-    const model = selectModel(task);
+    const model = await getModelForTask(task, budgetRemaining);
 
     // 1. Buscar agente 'idle' con mismo rol y modelo
     const { data: idleAgents, error: searchErr } = await supabase

@@ -13,6 +13,8 @@ export type ModelType =
 export type AgentStatus = 'idle' | 'thinking' | 'working' | 'paused'
 export type EmploymentStatus = 'active' | 'fired' | 'promoted'
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+export type ProjectStatus = 'planning' | 'running' | 'paused' | 'completed' | 'cancelled'
+
 
 export interface AvatarConfig {
     color: string
@@ -65,7 +67,22 @@ export interface SharedContext {
     task?: Task
 }
 
+export interface Project {
+    id: string
+    name: string
+    description: string | null
+    directive: string | null
+    status: ProjectStatus
+    progress_pct: number
+    started_at: string
+    created_at: string
+    user_id?: string | null
+    // Joined relations (optional)
+    agents?: Agent[]
+}
+
 export interface ArchitectResponse {
+
     model_type: ModelType
     system_prompt: string
     suggested_name: string

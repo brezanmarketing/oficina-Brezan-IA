@@ -12,6 +12,9 @@ import { HireModal } from '@/components/HireModal'
 import { Sidebar } from '@/components/Sidebar'
 import { FinanceMonitor } from '@/components/FinanceMonitor'
 import { OfficeMap } from '@/components/OfficeMap'
+import { SystemStatus } from '@/components/SystemStatus'
+import { MisionesActivas } from '@/components/MisionesActivas'
+
 import { useAgents } from '@/hooks/useAgents'
 import { useOrchestrator } from '@/hooks/useOrchestrator'
 import { createClient } from '@/lib/supabase/client'
@@ -153,6 +156,10 @@ export default function HomePage() {
           </div>
         </header>
 
+        {/* Sección 3: Estado del Sistema */}
+        <SystemStatus />
+
+
         {/* Dashboard Section */}
         {activeSection === 'dashboard' && (
           <div className="p-6">
@@ -244,11 +251,18 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* Columna derecha: Finance Monitor */}
-              <div className="w-[340px] sticky top-24 shrink-0">
+              {/* Columna derecha: Finance Monitor + Activity Feed */}
+              <div className="w-[340px] sticky top-24 shrink-0 flex flex-col gap-6">
                 <FinanceMonitor />
+                <ActivityFeed />
               </div>
             </div>
+
+            {/* Sección 1: Misiones Activas (Ocupa ancho completo) */}
+            <div className="mt-12">
+              <MisionesActivas />
+            </div>
+
           </div>
         )}
 

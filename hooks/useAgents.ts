@@ -53,21 +53,26 @@ export function useAgents() {
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'agents' },
                 (payload) => {
-                    console.log('Realtime Update Received:', payload.eventType, payload.new?.name, payload.new?.status);
+                    const newAgent = payload.new as Agent
+                    const oldAgent = payload.old as { id: string }
+
+                    console.log('Realtime Update Received:', payload.eventType, newAgent?.name, newAgent?.status);
+
                     if (payload.eventType === 'INSERT') {
-                        setAgents((prev) => [...prev, payload.new as Agent])
+                        setAgents((prev) => [...prev, newAgent])
                     } else if (payload.eventType === 'UPDATE') {
                         setAgents((prev) =>
                             prev.map((a) =>
-                                a.id === payload.new.id ? { ...a, ...(payload.new as Agent) } : a
+                                a.id === newAgent.id ? { ...a, ...newAgent } : a
                             )
                         )
                     } else if (payload.eventType === 'DELETE') {
                         setAgents((prev) =>
-                            prev.filter((a) => a.id !== payload.old.id)
+                            prev.filter((a) => a.id !== oldAgent.id)
                         )
                     }
                 }
+
             )
             .subscribe((status) => {
                 console.log('Realtime Subscription Status:', status);
