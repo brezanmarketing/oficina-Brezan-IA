@@ -14,6 +14,9 @@ import { FinanceMonitor } from '@/components/FinanceMonitor'
 import { OfficeMap } from '@/components/OfficeMap'
 import { SystemStatus } from '@/components/SystemStatus'
 import { MisionesActivas } from '@/components/MisionesActivas'
+import RecursosOficina from '@/components/RecursosOficina'
+import { Folder } from 'lucide-react'
+
 
 import { useAgents } from '@/hooks/useAgents'
 import { useOrchestrator } from '@/hooks/useOrchestrator'
@@ -90,11 +93,17 @@ export default function HomePage() {
                 {activeSection === 'settings' && (
                   <><Settings className="w-6 h-6 text-slate-400" /> Configuración</>
                 )}
+                {activeSection === 'resources' && (
+                  <><Folder className="w-6 h-6 text-indigo-400" /> Recursos de la Oficina</>
+                )}
+
               </h1>
               <p className="text-slate-400 text-sm mt-0.5">
                 {activeSection === 'dashboard' && `${agents.length} agentes contratados · ${activeAgents} activos ahora`}
                 {activeSection === 'office' && 'Simulador de Oficina en vivo'}
                 {activeSection === 'settings' && 'Configuración del sistema'}
+                {activeSection === 'resources' && 'Repositorio de Documentos Estratégicos'}
+
               </p>
             </div>
 
@@ -278,6 +287,11 @@ export default function HomePage() {
           <div className="p-6 h-[calc(100vh-73px)] overflow-hidden">
             <JarvisConnections />
           </div>
+        )}
+
+        {/* Resources Section */}
+        {activeSection === 'resources' && (
+          <RecursosOficina />
         )}
 
         {/* Settings Section */}

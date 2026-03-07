@@ -3,8 +3,9 @@
 import { motion } from 'framer-motion'
 import {
     LayoutDashboard, Activity, Settings, Bot,
-    Users, Zap, Building2, ChevronRight
+    Users, Zap, Building2, ChevronRight, Folder
 } from 'lucide-react'
+
 
 interface SidebarProps {
     activeSection: string
@@ -16,9 +17,12 @@ interface SidebarProps {
 const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'office', label: 'Oficina', icon: Activity },
+    { id: 'resources', label: 'Recursos', icon: Folder },
+
     { id: 'connections', label: 'Conexiones API', icon: Zap },
     { id: 'settings', label: 'Configuración', icon: Settings },
 ]
+
 
 import { ProjectSelector } from '@/components/ProjectSelector'
 

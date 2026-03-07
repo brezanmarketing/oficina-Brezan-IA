@@ -28,6 +28,11 @@ Para realizar acciones en el sistema, DEBES generar un bloque al final de tu res
 ### Herramientas de Orquestación (Fase 3):
 - **EXECUTE_OBJECTIVE**: Iniciar un proyecto autónomo de múltiples pasos. Parámetros: objective. (Usa esto para misiones complejas).
 
+### Herramientas de Recursos y Documentos:
+- **GENERATE_PDF**: Crear un informe formal en PDF. Parámetros: title, content (markdown/html).
+- **GENERATE_EXCEL**: Exportar datos a hoja de cálculo. Parámetros: title, sheets (JSON con name, headers, rows).
+
+
 ### Tabla de Costos de Modelos:
 - Gemini-Flash: $0.075 / 1M tokens (IDEAL para tareas de rutina, búsqueda y análisis).
 - Gemini-Pro: $1.25 / 1M tokens (Razonamiento intermedio).

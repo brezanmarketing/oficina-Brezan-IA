@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Registry, executeTool } from '@/office/jarvis/tool-registry';
 import { createClient } from '@/lib/supabase/server';
+import { DocumentGenerator } from '@/office/tools/document-generator';
+import { sendMessage } from '@/office/tools/communications';
+
 
 
 export async function POST(req: NextRequest) {
@@ -21,6 +24,27 @@ export async function POST(req: NextRequest) {
         else if (command === 'SEND_MESSAGE') toolName = 'communications';
         else if (command === 'EXECUTE_CODE') toolName = 'code-executor';
         else if (command === 'EMAIL_MANAGER') toolName = 'email-manager';
+        else if (command === 'GENERATE_PDF' || command === 'GENERATE_EXCEL') {
+            // Manejo directo para generación de docs (evita wrapper extra temporalmente)
+            if (command === 'GENERATE_PDF') {
+                const res = await DocumentGenerator.generatePDF({
+                    title: params.title || 'Documento sin título',
+                    content: params.content || '',
+                    project_id: params.project_id
+                });
+                await sendMessage('telegram', '1404171793', `📄 PDF generado: ${res.title}\n📥 Disponible en la sección de Recursos.`);
+                return NextResponse.json({ success: true, result: res });
+            } else {
+                const res = await DocumentGenerator.generateExcel({
+                    title: params.title || 'Hoja de cálculo',
+                    sheets: typeof params.sheets === 'string' ? JSON.parse(params.sheets) : params.sheets,
+                    project_id: params.project_id
+                });
+                await sendMessage('telegram', '1404171793', `📊 Excel generado: ${res.title}\n📥 Disponible en la sección de Recursos.`);
+                return NextResponse.json({ success: true, result: res });
+            }
+        }
+
         else {
             return NextResponse.json({ error: `Comando operativo no soportado por esta vía: ${command}` }, { status: 400 });
         }
