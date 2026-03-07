@@ -80,7 +80,10 @@ export async function apiCall(config: ApiCallConfig): Promise<ToolResult> {
     const timeoutMs = config.timeoutMs || 30000;
     const maxRetries = config.retries ?? 3;
     let attempt = 0;
-    let headers = { ...(config.headers || {}) };
+    let headers = {
+        'Content-Type': 'application/json',
+        ...(config.headers || {})
+    };
 
     let domain = 'localhost';
     try {
