@@ -4,14 +4,19 @@ import { processJarvisMessage } from '@/office/jarvis/telegram-handler'
 export async function POST(req: NextRequest) {
     try {
         const update = await req.json()
+        console.log('WEBHOOK RECIBIDO:', JSON.stringify(update))
 
         // Verificar que es un mensaje de texto
         if (!update.message?.text) {
+            console.log('Sin texto, ignorando')
             return Response.json({ ok: true })
         }
 
         const chatId = update.message.chat.id.toString()
         const text = update.message.text
+        console.log('MENSAJE DE:', chatId, 'TEXTO:', text)
+        console.log('OWNER ID:', '1404171793')
+        console.log('ES OWNER:', chatId === '1404171793')
         const username = update.message.from?.first_name || 'CEO'
 
         // Solo responder al owner (seguridad)
