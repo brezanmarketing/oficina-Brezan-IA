@@ -3,5 +3,39 @@
         "app/api/**": {
             "maxDuration": 60
         }
-    }
+    },
+    "crons": [
+        {
+            "path": "/api/cron/daily-briefing",
+            "schedule": "0 8 * * *"
+        },
+        {
+            "path": "/api/cron/cost-review",
+            "schedule": "0 9 * * *"
+        },
+        {
+            "path": "/api/cron/weekly-report",
+            "schedule": "0 9 * * 1"
+        },
+        {
+            "path": "/api/cron/cleanup",
+            "schedule": "0 3 * * *"
+        },
+        {
+            "path": "/api/cron/health-check",
+            "schedule": "*/30 * * * *"
+        },
+        {
+            "path": "/api/cron/self-audit",
+            "schedule": "0 22 * * 0"
+        },
+        {
+            "path": "/api/cron/check-emails",
+            "schedule": "*/5 * * * *"
+        },
+        {
+            "path": "/api/cron/check-conditions",
+            "schedule": "*/5 * * * *"
+        }
+    ]
 }

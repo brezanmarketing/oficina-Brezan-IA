@@ -15,7 +15,7 @@ import { OfficeMap } from '@/components/OfficeMap'
 import { SystemStatus } from '@/components/SystemStatus'
 import { MisionesActivas } from '@/components/MisionesActivas'
 import RecursosOficina from '@/components/RecursosOficina'
-import { Folder } from 'lucide-react'
+import { Folder, Clock } from 'lucide-react'
 
 
 import { useAgents } from '@/hooks/useAgents'
@@ -30,6 +30,7 @@ import { CompanyDirective } from '@/components/CompanyDirective'
 import { ProjectTeamManager } from '@/components/ProjectTeamManager'
 import { useProject } from '@/context/ProjectContext'
 import JarvisConnections from './connections/page'
+import AutomatizacionesPage from './automatizaciones/page'
 
 export default function HomePage() {
   const [activeSection, setActiveSection] = useState('dashboard')
@@ -96,13 +97,16 @@ export default function HomePage() {
                 {activeSection === 'resources' && (
                   <><Folder className="w-6 h-6 text-indigo-400" /> Recursos de la Oficina</>
                 )}
-
+                {activeSection === 'automations' && (
+                  <><Clock className="w-6 h-6 text-emerald-400" /> Automatizaciones</>
+                )}
               </h1>
               <p className="text-slate-400 text-sm mt-0.5">
                 {activeSection === 'dashboard' && `${agents.length} agentes contratados · ${activeAgents} activos ahora`}
                 {activeSection === 'office' && 'Simulador de Oficina en vivo'}
                 {activeSection === 'settings' && 'Configuración del sistema'}
                 {activeSection === 'resources' && 'Repositorio de Documentos Estratégicos'}
+                {activeSection === 'automations' && 'Panel de control de Crons, Webhooks, Emails y Triggers Recreativos'}
 
               </p>
             </div>
@@ -286,6 +290,13 @@ export default function HomePage() {
         {activeSection === 'connections' && (
           <div className="p-6 h-[calc(100vh-73px)] overflow-hidden">
             <JarvisConnections />
+          </div>
+        )}
+
+        {/* Automations Section */}
+        {activeSection === 'automations' && (
+          <div className="p-6 h-[calc(100vh-73px)] overflow-hidden">
+            <AutomatizacionesPage />
           </div>
         )}
 
