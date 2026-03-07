@@ -202,29 +202,46 @@ export function AgentCard({ agent, onDelete, onClick, onChat }: AgentCardProps) 
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-white/5 relative z-10">
-                    <span className="text-slate-600 text-xs">
-                        {new Date(agent.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                    </span>
-                    <div className="flex items-center gap-3">
-                        {onChat && (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onChat(agent); }}
-                                className="flex items-center gap-1 text-slate-400 hover:text-indigo-400 text-xs transition-colors duration-200"
-                            >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                Hablar
-                            </button>
-                        )}
+                <div className="flex flex-col gap-4 pt-4 border-t border-white/5 relative z-10">
+                    <div className="flex items-center justify-between">
+                        <span className="text-slate-600 text-[10px] uppercase tracking-widest font-medium">
+                            Incorporado: {new Date(agent.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                        </span>
                         {onDelete && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDelete(agent.id); }}
-                                className="text-slate-600 hover:text-red-400 text-xs transition-colors duration-200 opacity-0 group-hover:opacity-100"
+                                className="text-slate-600 hover:text-red-500/80 text-[10px] uppercase tracking-wider font-bold transition-all duration-200 opacity-0 group-hover:opacity-100 px-2 py-1 hover:bg-red-500/5 rounded-md"
                             >
                                 Despedir
                             </button>
                         )}
                     </div>
+
+                    {onChat && (
+                        <motion.button
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={(e) => { e.stopPropagation(); onChat(agent); }}
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:border-white/20 shadow-lg transition-all duration-300 group/btn"
+                            style={{
+                                boxShadow: `0 10px 30px -10px ${modelColor}33`
+                            }}
+                        >
+                            <MessageSquare
+                                className="w-4 h-4 transition-transform duration-300 group-hover/btn:rotate-12"
+                                style={{ color: modelColor }}
+                            />
+                            <span className="text-sm font-bold text-white tracking-wide">
+                                Hablar con {agent.name.split(' ')[0]}
+                            </span>
+                            <div
+                                className="absolute inset-0 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500 rounded-xl"
+                                style={{
+                                    background: `radial-gradient(circle at center, ${modelColor}22 0%, transparent 70%)`
+                                }}
+                            />
+                        </motion.button>
+                    )}
                 </div>
             </div>
         </motion.div>
