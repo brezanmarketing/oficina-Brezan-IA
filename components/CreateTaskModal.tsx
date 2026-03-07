@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, PlayCircle, Plus, CheckCircle, Bot, Link } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Agent } from '@/lib/types'
+import { useProject } from '@/context/ProjectContext'
 
 interface CreateTaskModalProps {
   isOpen: boolean
@@ -20,6 +21,7 @@ export function CreateTaskModal({ isOpen, onClose, agents }: CreateTaskModalProp
   const [chainOfCommand, setChainOfCommand] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const { activeProjectId } = useProject()
 
   const handleToggleAgent = (agentId: string) => {
     if (chainOfCommand.includes(agentId)) {
@@ -30,7 +32,7 @@ export function CreateTaskModal({ isOpen, onClose, agents }: CreateTaskModalProp
   }
 
   const handleCreateTask = async () => {
-    if (!title.trim() || chainOfCommand.length === 0) return
+    if (!title.trim() || chainOfCommand.length === 0 || !activeProjectId) return
     setLoading(true)
 
     try {
@@ -45,7 +47,8 @@ export function CreateTaskModal({ isOpen, onClose, agents }: CreateTaskModalProp
           assigned_agent_id: firstAgentId,
           chain_of_command: chainOfCommand,
           current_step_index: 0,
-          status: 'in_progress'
+          status: 'in_progress',
+          project_id: activeProjectId
         })
         .select()
         .single()

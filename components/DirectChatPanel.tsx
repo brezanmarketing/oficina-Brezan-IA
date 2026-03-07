@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send, Bot, User, Loader2, Play, CheckCircle, XCircle, Zap } from 'lucide-react'
 import { Agent } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { useProject } from '@/context/ProjectContext'
 
 interface DirectChatPanelProps {
     agent: Agent | null
@@ -60,6 +61,9 @@ function describeAction(action: AgentAction): string {
     if (action.command === 'UPDATE_DIRECTIVE') {
         return `Actualizar la Directiva Empresarial`
     }
+    if (action.command === 'ASSIGN_TEAM') {
+        return `Asignar al equipo: **${action.params.agents}**`
+    }
     return `Ejecutar: ${action.command}`
 }
 
@@ -86,6 +90,9 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
     const [isSending, setIsSending] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const supabase = createClient()
+    const { activeProjectId, projects } = useProject()
+
+    const activeProject = projects.find(p => p.id === activeProjectId)
 
     useEffect(() => {
         if (isOpen && agent) {
@@ -128,13 +135,17 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
         setIsSending(true)
 
         try {
+            const projectContextText = activeProject?.directive
+                ? `\n\n## DIRECTIVA DE ESTE PROYECTO TÁCTICO (WAR ROOM: ${activeProject.name}):\n${activeProject.directive}\nPrioriza esta directiva para las respuestas y decisiones. Tienes autoridad para gestionar el equipo.`
+                : ''
+
             const res = await fetch('/api/agent/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     agentId: agent.id,
                     modelType: agent.model_type,
-                    systemPrompt: agent.system_prompt,
+                    systemPrompt: agent.system_prompt + projectContextText,
                     messages: [...messages, userMsg].slice(-10).map(m => ({ role: m.role, content: m.content }))
                 })
             })
@@ -209,6 +220,26 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
                         }
                     })
                     if (error) throw error
+
+                } else if (action.command === 'ASSIGN_TEAM') {
+                    if (!activeProjectId) throw new Error('No puedes asignar un equipo porque no hay un proyecto activo (War Room).')
+                    const agentsStr = action.params.agents
+                    if (!agentsStr) throw new Error('No se proporcionaron agentes para asignar (agents).')
+
+                    const agentNames = agentsStr.split(',').map(n => n.trim().toLowerCase())
+                    const agentsToAssign = allAgents.filter(a => agentNames.some(n => a.name.toLowerCase().includes(n)))
+
+                    if (agentsToAssign.length > 0) {
+                        const inserts = agentsToAssign.map(a => ({
+                            project_id: activeProjectId,
+                            agent_id: a.id
+                        }))
+                        // Inserción ignorando conflictos si ya están asignados
+                        const { error } = await supabase.from('project_agents').upsert(inserts, { onConflict: 'project_id, agent_id' })
+                        if (error) throw error
+                    } else {
+                        console.warn('Ningún agente encontrado con esos nombres:', agentsStr)
+                    }
 
                 } else if (action.command === 'ASK_AGENT') {
                     const { agent_name, question } = action.params

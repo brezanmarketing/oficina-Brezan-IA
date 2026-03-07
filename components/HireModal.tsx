@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkles, Edit3, CheckCircle, Loader2, Bot, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ArchitectResponse, ModelType } from '@/lib/types'
+import { useProject } from '@/context/ProjectContext'
 
 interface HireModalProps {
     isOpen: boolean
@@ -41,6 +42,7 @@ export function HireModal({ isOpen, onClose, onAgentCreated }: HireModalProps) {
     const [editColor, setEditColor] = useState('#6366f1')
 
     const supabase = createClient()
+    const { activeProjectId } = useProject()
 
     const handleReset = () => {
         setStep('describe')
@@ -92,7 +94,7 @@ export function HireModal({ isOpen, onClose, onAgentCreated }: HireModalProps) {
         setError(null)
 
         try {
-            const { error: insertError } = await supabase.from('agents').insert({
+            const { data: newAgent, error: insertError } = await supabase.from('agents').insert({
                 name: editName.trim(),
                 role: editRole.trim(),
                 model_type: editModel,
@@ -103,9 +105,17 @@ export function HireModal({ isOpen, onClose, onAgentCreated }: HireModalProps) {
                     icon: editIcon,
                     gradient: editGradient,
                 },
-            })
+            }).select().single()
 
             if (insertError) throw insertError
+
+            if (newAgent && activeProjectId) {
+                const { error: projectError } = await supabase.from('project_agents').insert({
+                    project_id: activeProjectId,
+                    agent_id: newAgent.id
+                })
+                if (projectError) throw projectError
+            }
 
             setStep('success')
             onAgentCreated()
@@ -165,10 +175,10 @@ export function HireModal({ isOpen, onClose, onAgentCreated }: HireModalProps) {
                                 <div key={s} className="flex items-center gap-2">
                                     <div
                                         className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === s
-                                                ? 'bg-indigo-500 text-white'
-                                                : i < (['describe', 'preview', 'success'] as Step[]).indexOf(step)
-                                                    ? 'bg-green-500 text-white'
-                                                    : 'bg-white/10 text-slate-500'
+                                            ? 'bg-indigo-500 text-white'
+                                            : i < (['describe', 'preview', 'success'] as Step[]).indexOf(step)
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-white/10 text-slate-500'
                                             }`}
                                     >
                                         {i + 1}

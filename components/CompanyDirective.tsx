@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Target, Edit3, Save, Loader2, BookOpen, CheckCircle } from 'lucide-react'
+import { X, Target, Edit3, Save, Loader2, BookOpen, CheckCircle, FolderGit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useProject } from '@/context/ProjectContext'
 
 interface CompanyDirectiveProps {
     isOpen: boolean
@@ -16,16 +17,25 @@ export function CompanyDirective({ isOpen, onClose }: CompanyDirectiveProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [saved, setSaved] = useState(false)
+    const { activeProjectId, projects, refreshProjects } = useProject()
     const supabase = createClient()
 
     useEffect(() => {
-        if (isOpen) {
+        if (!isOpen) return
+
+        if (activeProjectId) {
+            // Cargar directiva del proyecto
+            const project = projects.find(p => p.id === activeProjectId)
+            setDirective(project?.directive || '')
+            setEditedDirective(project?.directive || '')
+        } else {
+            // Cargar directiva global
             supabase
                 .from('system_settings')
                 .select('value')
                 .eq('key', 'company_directive')
                 .single()
-                .then(({ data }) => {
+                .then(({ data }: { data: any }) => {
                     const text = data?.value
                         ? (typeof data.value === 'string' ? data.value : JSON.stringify(data.value, null, 2))
                         : ''
@@ -33,13 +43,22 @@ export function CompanyDirective({ isOpen, onClose }: CompanyDirectiveProps) {
                     setEditedDirective(text)
                 })
         }
-    }, [isOpen, supabase])
+    }, [isOpen, supabase, activeProjectId, projects])
 
     const handleSave = async () => {
         setIsSaving(true)
-        await supabase
-            .from('system_settings')
-            .upsert({ key: 'company_directive', value: editedDirective })
+        if (activeProjectId) {
+            await supabase
+                .from('projects')
+                .update({ directive: editedDirective })
+                .eq('id', activeProjectId)
+            await refreshProjects()
+        } else {
+            await supabase
+                .from('system_settings')
+                .upsert({ key: 'company_directive', value: editedDirective })
+        }
+
         setDirective(editedDirective)
         setIsSaving(false)
         setIsEditing(false)
@@ -96,12 +115,16 @@ export function CompanyDirective({ isOpen, onClose }: CompanyDirectiveProps) {
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-white/10 shrink-0">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                                    <Target className="w-6 h-6 text-amber-400" />
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${activeProjectId ? 'bg-indigo-500/20' : 'bg-amber-500/20'}`}>
+                                    {activeProjectId ? <FolderGit2 className="w-6 h-6 text-indigo-400" /> : <Target className="w-6 h-6 text-amber-400" />}
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-white">Directiva Empresarial</h2>
-                                    <p className="text-sm text-slate-400">Organigrama y estrategia — visible por todos los agentes</p>
+                                    <h2 className="text-xl font-bold text-white">
+                                        {activeProjectId ? 'Directiva del Proyecto' : 'Directiva Empresarial'}
+                                    </h2>
+                                    <p className="text-sm text-slate-400">
+                                        {activeProjectId ? 'Objetivos y contexto estricto para las misiones de este proyecto' : 'Organigrama y estrategia corporativa — visible por todos los agentes'}
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -151,10 +174,10 @@ export function CompanyDirective({ isOpen, onClose }: CompanyDirectiveProps) {
                         </div>
 
                         {/* Indicador de que los agentes lo ven */}
-                        <div className="px-6 py-3 bg-amber-500/5 border-b border-amber-500/10 flex items-center gap-2">
-                            <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
-                            <p className="text-xs text-amber-300/80">
-                                Esta directiva se inyecta automáticamente en el contexto de <strong>todos los agentes</strong> al ejecutar tareas. Puedes actualizarla en cualquier momento.
+                        <div className={`px-6 py-3 border-b flex items-center gap-2 ${activeProjectId ? 'bg-indigo-500/5 border-indigo-500/10' : 'bg-amber-500/5 border-amber-500/10'}`}>
+                            <BookOpen className={`w-4 h-4 shrink-0 ${activeProjectId ? 'text-indigo-400' : 'text-amber-400'}`} />
+                            <p className={`text-xs ${activeProjectId ? 'text-indigo-300/80' : 'text-amber-300/80'}`}>
+                                Esta directiva se inyecta automáticamente en el contexto de <strong>los agentes asignados al proyecto</strong> al ejecutar tareas.
                             </p>
                         </div>
 

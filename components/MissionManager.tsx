@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, ShieldAlert, Activity, StopCircle, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Task, Agent } from '@/lib/types'
+import { useProject } from '@/context/ProjectContext'
 
 interface MissionManagerProps {
     isOpen: boolean
@@ -17,12 +18,16 @@ export function MissionManager({ isOpen, onClose, agents }: MissionManagerProps)
     const [loading, setLoading] = useState(true)
     const [cancellingId, setCancellingId] = useState<string | null>(null)
     const supabase = createClient()
+    const { activeProjectId } = useProject()
 
     const fetchTasks = async () => {
+        if (!activeProjectId) return
+
         setLoading(true)
         const { data, error } = await supabase
             .from('tasks')
             .select('*')
+            .eq('project_id', activeProjectId)
             .in('status', ['pending', 'in_progress'])
             .order('created_at', { ascending: false })
 
@@ -33,10 +38,10 @@ export function MissionManager({ isOpen, onClose, agents }: MissionManagerProps)
     }
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && activeProjectId) {
             fetchTasks()
         }
-    }, [isOpen])
+    }, [isOpen, activeProjectId])
 
     const handleAbort = async (task: Task) => {
         setCancellingId(task.id)
@@ -150,8 +155,8 @@ export function MissionManager({ isOpen, onClose, agents }: MissionManagerProps)
                                                 onClick={() => handleAbort(task)}
                                                 disabled={cancellingId === task.id}
                                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${cancellingId === task.id
-                                                        ? 'bg-rose-500/20 text-rose-300 cursor-not-allowed'
-                                                        : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20'
+                                                    ? 'bg-rose-500/20 text-rose-300 cursor-not-allowed'
+                                                    : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20'
                                                     }`}
                                             >
                                                 {cancellingId === task.id ? (

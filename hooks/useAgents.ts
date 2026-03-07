@@ -3,23 +3,45 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Agent } from '@/lib/types'
+import { useProject } from '@/context/ProjectContext'
 
 export function useAgents() {
     const [agents, setAgents] = useState<Agent[]>([])
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
+    const { activeProjectId } = useProject()
 
     const fetchAgents = useCallback(async () => {
-        const { data, error } = await supabase
-            .from('agents')
-            .select('*')
-            .order('created_at', { ascending: true })
+        setLoading(true)
 
-        if (!error && data) {
-            setAgents(data as Agent[])
+        if (!activeProjectId) {
+            // Vista Oficina Global: Cargar TODOS los agentes
+            const { data, error } = await supabase
+                .from('agents')
+                .select('*')
+                .order('created_at', { ascending: true })
+
+            if (!error && data) {
+                setAgents(data as Agent[])
+            }
+        } else {
+            // Vista Proyecto Específico: Filtrar por JOIN en project_agents
+            const { data, error } = await supabase
+                .from('agents')
+                .select('*, project_agents!inner(project_id)')
+                .eq('project_agents.project_id', activeProjectId)
+                .order('created_at', { ascending: true })
+
+            if (!error && data) {
+                const cleanedData = data.map((agent: any) => {
+                    const { project_agents, ...rest } = agent
+                    return rest
+                })
+                setAgents(cleanedData as Agent[])
+            }
         }
         setLoading(false)
-    }, [supabase])
+    }, [supabase, activeProjectId])
 
     useEffect(() => {
         fetchAgents()

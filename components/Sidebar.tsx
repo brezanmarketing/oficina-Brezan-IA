@@ -19,6 +19,8 @@ const navItems = [
     { id: 'settings', label: 'Configuración', icon: Settings },
 ]
 
+import { ProjectSelector } from '@/components/ProjectSelector'
+
 export function Sidebar({ activeSection, onSectionChange, agentCount, activeAgents }: SidebarProps) {
     return (
         <aside className="flex flex-col w-64 min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 border-r border-white/5">
@@ -39,6 +41,9 @@ export function Sidebar({ activeSection, onSectionChange, agentCount, activeAgen
                     </div>
                 </div>
             </div>
+
+            {/* Selector de Proyecto */}
+            <ProjectSelector />
 
             {/* Stats */}
             <div className="p-4 mx-3 mt-4 rounded-xl bg-white/5 border border-white/5">

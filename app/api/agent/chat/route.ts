@@ -13,8 +13,9 @@ Para realizar acciones en el sistema (preguntar a expertos o contratar), DEBES g
 - **ASK_AGENT**: Para preguntar a expertos (ej. Ada). Parámetros: agent_name, question.
 - **CREATE_AGENT**: Para contratar a un nuevo trabajador. Parámetros: name, role, model, prompt.
 - **UPDATE_DIRECTIVE**: Para actualizar la estrategia corporativa. Parámetros: content.
+- **ASSIGN_TEAM**: Para asignar agentes existentes de la Oficina Global a tu proyecto actual. Parámetros: agents (nombres separados por comas, ej. Ada,Desarrollador_FullStack).
 
-REGLA CRÍTICA: NO digas "voy a preguntar" en texto plano. SI quieres preguntar, DEBES incluir el bloque [[ACTION: ASK_AGENT ...]]. Si no lo incluyes, la acción NO se ejecutará.
+REGLA CRÍTICA: NO digas "voy a preguntar" o "voy a asignar" en texto plano. SI quieres realizar una de las acciones, DEBES incluir el bloque [[ACTION: NOMBRE_ACCION ...]]. Si no lo incluyes, la acción NO se ejecutará. Si es necesario para cumplir la directiva, asigna un equipo usando el comando ASSIGN_TEAM o contrata usando CREATE_AGENT.
 ---
 `
 
@@ -61,7 +62,7 @@ ${ACTIONS_PROTOCOL}
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${openAiApiKey}`
+                    'Authorization': `Bearer ${openAiApiKey} `
                 },
                 body: JSON.stringify({
                     model: openAiModel,

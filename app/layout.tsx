@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   keywords: 'IA, agentes, inteligencia artificial, SaaS, automatización',
 }
 
+import { ProjectProvider } from '@/context/ProjectContext'
+
 export default function RootLayout({
   children,
 }: {
@@ -18,7 +20,9 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark">
       <body className={`${inter.className} bg-slate-950 text-white antialiased`}>
-        {children}
+        <ProjectProvider>
+          {children}
+        </ProjectProvider>
       </body>
     </html>
   )

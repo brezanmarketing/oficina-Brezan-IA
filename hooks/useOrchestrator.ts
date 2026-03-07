@@ -7,15 +7,16 @@ import { Task, SharedContext, Agent } from '@/lib/types'
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 type AgentAction = { command: string; params: Record<string, string> }
 
-export function useOrchestrator(agents: Agent[]) {
+export function useOrchestrator(agents: Agent[], activeProjectId?: string | null) {
   const supabase = createClient()
 
   // Refs para evitar referencias circulares entre runAgent y executeActions
   const runAgentRef = useRef<(agent: Agent, task: Task, promptText: string, consultationResults?: { agentName: string; agentRole: string; result: string }[]) => Promise<void>>(async () => { })
   const executeActionsRef = useRef<(actions: AgentAction[], executingAgent: Agent, originTask?: Task, originalPrompt?: string) => Promise<void>>(async () => { })
 
-  // ─── Directiva Empresarial ─────────────────────────────────────────────
+  // ─── Directiva Empresarial y de Proyecto ──────────────────────────────
   const [companyDirective, setCompanyDirective] = useState<string>('')
+  const [projectDirective, setProjectDirective] = useState<string>('')
 
   useEffect(() => {
     // Cargar la directiva empresarial desde system_settings
@@ -30,6 +31,17 @@ export function useOrchestrator(agents: Agent[]) {
         }
       })
   }, [supabase])
+
+  useEffect(() => {
+    if (activeProjectId) {
+      supabase.from('projects').select('directive').eq('id', activeProjectId).single().then(({ data }) => {
+        if (data?.directive) setProjectDirective(data.directive)
+        else setProjectDirective('')
+      })
+    } else {
+      setProjectDirective('')
+    }
+  }, [activeProjectId, supabase])
 
   // Ejecuta a un agente usando el endpoint LLM
   // consultationResults: resultados de consultas previas a otros agentes (para re-ejecuciones)
@@ -57,10 +69,12 @@ export function useOrchestrator(agents: Agent[]) {
       ? `\n\n---\n## RESULTADOS DE CONSULTA CON EXPERTOS\n${consultationResults.map(c => `### ${c.agentName} (${c.agentRole}) respondió:\n${c.result}`).join('\n\n')}\n---\n\nCon esta información de tus compañeros, ahora completa tu tarea.`
       : ''
 
-    // ─── Directiva Empresarial: contexto estratégico de la compañía
-    const directiveContext = companyDirective
-      ? `\n\n---\n## DIRECTIVA ESTRATÉGICA DE LA EMPRESA (CONTEXTO OBLIGATORIO)\n${companyDirective}\n---\n`
-      : ''
+    // ─── Directiva Empresarial o de Proyecto: contexto estratégico
+    const directiveContext = projectDirective
+      ? `\n\n---\n## DIRECTIVA DE ESTE PROYECTO TÁCTICO (WAR ROOM COMPARTIDA)\n${projectDirective}\nPrioriza esta directiva táctica y usa la acción ASSIGN_TEAM para armar el equipo si es necesario.\n---\n`
+      : companyDirective
+        ? `\n\n---\n## DIRECTIVA ESTRATÉGICA DE LA EMPRESA (CONTEXTO OBLIGATORIO)\n${companyDirective}\n---\n`
+        : ''
 
     const enrichedPrompt = promptText + teamContext + directiveContext + consultationContext
 
@@ -222,6 +236,14 @@ export function useOrchestrator(agents: Agent[]) {
           console.error('[AUTONOMY] Error creando agente:', error)
         } else {
           console.log(`[AUTONOMY] ✅ Nuevo agente '${name}' creado por ${executingAgent.name}!`, newAgent)
+
+          if (newAgent && activeProjectId) {
+            await supabase.from('project_agents').insert({
+              project_id: activeProjectId,
+              agent_id: newAgent.id
+            })
+          }
+
           await supabase.from('shared_context').insert({
             task_id: null,
             sender_agent_id: executingAgent.id,
@@ -231,6 +253,49 @@ export function useOrchestrator(agents: Agent[]) {
               new_agent_id: newAgent?.id
             }
           })
+        }
+      }
+
+      // ─── ASSIGN_TEAM: EXCLUSIVO de J.A.R.V.I.S. en WAR ROOMS ──────────────
+      else if (action.command === 'ASSIGN_TEAM') {
+        const isJarvis =
+          executingAgent.name.toLowerCase().includes('jarvis') ||
+          executingAgent.role.toLowerCase().includes('mano derecha')
+
+        if (!isJarvis) {
+          console.warn(`[AUTONOMY] 🚫 ASSIGN_TEAM bloqueado. Solo J.A.R.V.I.S. puede asignar equipos.`)
+          continue
+        }
+
+        if (!activeProjectId) {
+          console.warn('[AUTONOMY] ASSIGN_TEAM: no hay un proyecto activo.')
+          continue
+        }
+
+        const agentsStr = action.params.agents
+        if (!agentsStr) continue
+
+        const agentNames = agentsStr.split(',').map(n => n.trim().toLowerCase())
+        const agentsToAssign = agents.filter(a => agentNames.some(n => a.name.toLowerCase().includes(n)))
+
+        if (agentsToAssign.length > 0) {
+          const inserts = agentsToAssign.map(a => ({
+            project_id: activeProjectId,
+            agent_id: a.id
+          }))
+          const { error } = await supabase.from('project_agents').upsert(inserts, { onConflict: 'project_id, agent_id' })
+          if (error) console.error('[AUTONOMY] Error asignando equipo:', error)
+          else {
+            console.log(`[AUTONOMY] ✅ J.A.R.V.I.S asignó al equipo: ${agentsToAssign.map(a => a.name).join(', ')}`)
+            await supabase.from('shared_context').insert({
+              task_id: null,
+              sender_agent_id: executingAgent.id,
+              data: {
+                event: 'TEAM_ASSIGNED',
+                message: `${executingAgent.name} ha ensamblado el equipo: ${agentsToAssign.map(a => a.name).join(', ')}.`
+              }
+            })
+          }
         }
       }
 
@@ -272,7 +337,7 @@ export function useOrchestrator(agents: Agent[]) {
           })
         }
       }
-    }
+    } // Fin del for loop de actions
 
     // Si hubo consultas a expertos, re-ejecutar al agente original con los resultados
     if (consultationResults.length > 0 && originTask && originalPrompt) {
@@ -283,7 +348,7 @@ export function useOrchestrator(agents: Agent[]) {
       }, 500)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, agents])
+  }, [supabase, agents, activeProjectId])
 
   // Sincronizar el ref con el valor actual
   executeActionsRef.current = executeActions

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Bot, Sparkles, Search, Filter,
-  LayoutGrid, Activity, Settings, Cpu, Loader2, ShieldAlert, Target
+  LayoutGrid, Activity, Settings, Cpu, Loader2, ShieldAlert, Target, Users, Trash2
 } from 'lucide-react'
 import { AgentCard } from '@/components/AgentCard'
 import { ActivityFeed } from '@/components/ActivityFeed'
@@ -21,6 +21,8 @@ import { AgentInspector } from '@/components/AgentInspector'
 import { MissionManager } from '@/components/MissionManager'
 import { DirectChatPanel } from '@/components/DirectChatPanel'
 import { CompanyDirective } from '@/components/CompanyDirective'
+import { ProjectTeamManager } from '@/components/ProjectTeamManager'
+import { useProject } from '@/context/ProjectContext'
 
 export default function HomePage() {
   const [activeSection, setActiveSection] = useState('dashboard')
@@ -28,14 +30,16 @@ export default function HomePage() {
   const [isHireModalOpen, setIsHireModalOpen] = useState(false)
   const [isMissionManagerOpen, setIsMissionManagerOpen] = useState(false)
   const [isDirectiveOpen, setIsDirectiveOpen] = useState(false)
+  const [isTeamManagerOpen, setIsTeamManagerOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [selectedAgentForInspection, setSelectedAgentForInspection] = useState<any | null>(null)
   const [selectedAgentForChat, setSelectedAgentForChat] = useState<any | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
 
+  const { activeProjectId, deleteProject, projects: allProjectsContext } = useProject()
   const { agents, loading, refetch } = useAgents()
-  useOrchestrator(agents)
+  useOrchestrator(agents, activeProjectId)
   const supabase = createClient()
 
   const activeAgents = agents.filter((a) => a.status === 'working' || a.status === 'thinking').length
@@ -99,6 +103,29 @@ export default function HomePage() {
                   <Target className="w-4 h-4" />
                   Directiva
                 </button>
+                {activeProjectId && (
+                  <>
+                    <button
+                      onClick={() => setIsTeamManagerOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-sm font-semibold rounded-xl transition-all border border-indigo-500/20 shadow-lg shadow-indigo-500/5 group"
+                    >
+                      <Users className="w-4 h-4 transition-transform group-hover:scale-110" />
+                      Asignar Equipo
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const project = allProjectsContext.find(p => p.id === activeProjectId)
+                        if (window.confirm(`¿Estás seguro de que quieres borrar el proyecto "${project?.name}"? Esta acción eliminará todo su contenido.`)) {
+                          await deleteProject(activeProjectId)
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-sm font-semibold rounded-xl transition-all border border-red-500/20 shadow-lg shadow-red-500/5 group"
+                    >
+                      <Trash2 className="w-4 h-4 transition-transform group-hover:scale-110" />
+                      Borrar Proyecto
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setIsMissionManagerOpen(true)}
                   className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-all border border-white/10"
@@ -283,6 +310,12 @@ export default function HomePage() {
       <CompanyDirective
         isOpen={isDirectiveOpen}
         onClose={() => setIsDirectiveOpen(false)}
+      />
+
+      <ProjectTeamManager
+        isOpen={isTeamManagerOpen}
+        onClose={() => setIsTeamManagerOpen(false)}
+        onSaved={() => refetch()}
       />
     </div>
   )
