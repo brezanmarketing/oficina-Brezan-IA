@@ -531,12 +531,19 @@ const isCellBlocked = (x: number, y: number): boolean => {
 // Mantener compatibilidad con el nombre anterior también
 const isObstacle = (x: number, y: number, _furniture?: Furniture[]) => isCellBlocked(x, y)
 
-export function OfficeMap({ agents }: { agents: Agent[] }) {
+export function OfficeMap({ agents: propAgents }: { agents: Agent[] }) {
     const supabase = useMemo(() => createClient(), [])
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [positions, setPositions] = useState<Record<string, { x: number, y: number }>>({})
     const [agentMessages, setAgentMessages] = useState<Record<string, number>>({})
     const [activeTasks, setActiveTasks] = useState<any[]>([])
+    const [agents, setAgents] = useState<Agent[]>(propAgents)
+
+    // Sincronizar el estado local cuando el prop cambia (ej: contratación)
+    useEffect(() => {
+        setAgents(propAgents)
+    }, [propAgents])
+
     const furniture = useMemo(() => createFurniture(agents), [agents])
 
     // Suscripción a Tareas Activas
@@ -558,6 +565,10 @@ export function OfficeMap({ agents }: { agents: Agent[] }) {
                 if (agentId) {
                     setAgentMessages(prev => ({ ...prev, [agentId]: Date.now() }))
                 }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'agents' }, payload => {
+                const updatedAgent = payload.new as Agent
+                setAgents(prev => prev.map(a => a.id === updatedAgent.id ? updatedAgent : a))
             })
             .subscribe()
 

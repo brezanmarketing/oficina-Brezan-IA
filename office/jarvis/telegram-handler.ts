@@ -10,9 +10,18 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // ─── Control de Estado Visual ────────────────────────────────────────────────
 async function updateAgentStatus(agentId: string, status: 'idle' | 'working' | 'thinking') {
     try {
-        await supabase.from('agents').update({ status }).eq('id', agentId)
+        // 1. Actualizar estado real
+        await supabase.from('agents').update({ status }).eq('id', agentId);
+
+        // 2. Insertar mensaje silencioso para disparar el "Jump" visual y el refresh del mapa
+        // Usamos un formato que el frontend ignore como texto pero detecte como trigger
+        await supabase.from('agent_messages').insert({
+            agent_id: agentId,
+            content: `[[STATUS_UPDATE:${status}]]`,
+            role: 'assistant'
+        });
     } catch (e) {
-        console.warn(`Error actualizando estado visual del agente ${agentId}:`, e)
+        console.warn(`Error actualizando estado visual del agente ${agentId}:`, e);
     }
 }
 
