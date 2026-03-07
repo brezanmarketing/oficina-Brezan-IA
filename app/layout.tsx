@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Oficina Brezan IA',
   description: 'Oficina virtual interactiva con agentes de inteligencia artificial',
-  keywords: 'IA, agentes, inteligencia artificial, SaaS, automatización',
+  keywords: 'IA, agentes, inteligencia artificial, SaaS, automatización, Vercel',
 }
 
 import { ProjectProvider } from '@/context/ProjectContext'
