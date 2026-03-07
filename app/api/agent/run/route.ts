@@ -20,6 +20,10 @@ Parámetros obligatorios: agent_name (nombre del compañero a consultar), questi
 Ejemplo: [[ACTION: ASK_AGENT | agent_name=Maia | question=¿Puedes revisar este análisis y darme tu opinión experta?]]
 IMPORTANTE: Cuando uses ASK_AGENT, el experto responderá, y TÚ serás re-ejecutado con su respuesta.
 
+**CHECK_CREDENTIAL** — Verificar si el usuario ha conectado su API Key en el Vault antes de usar una herramienta externa que lo exija (ej. Web Search, GitHub, Notion).
+Parámetros obligatorios: integration_id (el identificador de la API, ej: openai, serper, github, notion, etc)
+Ejemplo: [[ACTION: CHECK_CREDENTIAL | integration_id=serper]]
+
 ### Reglas de Uso:
 - Solo incluye un bloque [[ACTION: ...]] si la tarea lo requiere explícitamente.
 - El bloque de acción debe ser lo ÚLTIMO en tu respuesta, en una línea separada.

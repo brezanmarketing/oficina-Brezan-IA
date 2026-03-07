@@ -11,6 +11,7 @@ export type ModelType =
     | 'Gemini-Pro'
 
 export type AgentStatus = 'idle' | 'thinking' | 'working' | 'paused'
+export type EmploymentStatus = 'active' | 'fired' | 'promoted'
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 
 export interface AvatarConfig {
@@ -27,6 +28,9 @@ export interface Agent {
     model_type: ModelType
     system_prompt: string | null
     status: AgentStatus
+    employment_status?: EmploymentStatus
+    creation_reason?: string | null
+    performance_score?: number
     last_message?: string | null
     collaboration_with?: string | null
     avatar_url?: string | null

@@ -57,7 +57,7 @@ export function useOrchestrator(agents: Agent[], activeProjectId?: string | null
     // ─── Directorio del Equipo: se inyecta en el prompt para que el agente sepa con quién puede colaborar
     const teamDirectory = agents
       .filter(a => a.id !== agent.id)
-      .map(a => `- ${a.name} (${a.role}): ID="${a.id}"`)
+      .map(a => `- ${a.name} (${a.role}) | Status: ${a.employment_status || 'active'} | Desempeño: ${a.performance_score || 100}/100 | ID="${a.id}"`)
       .join('\n')
 
     const teamContext = agents.length > 1
@@ -205,7 +205,7 @@ export function useOrchestrator(agents: Agent[], activeProjectId?: string | null
           continue
         }
 
-        const { name, role, model, prompt: agentPrompt } = action.params
+        const { name, role, model, prompt: agentPrompt, reason } = action.params
         if (!name || !role || !agentPrompt) {
           console.warn('[AUTONOMY] CREATE_AGENT: faltan parámetros (name, role, prompt).')
           continue
@@ -229,6 +229,9 @@ export function useOrchestrator(agents: Agent[], activeProjectId?: string | null
           model_type: model || 'Gemini-Flash',
           system_prompt: agentPrompt.trim(),
           status: 'idle',
+          creation_reason: reason || 'Decisión ejecutiva',
+          employment_status: 'active',
+          performance_score: 100,
           avatar_config: { icon: randomIcon, gradient: randomGradient }
         }).select().single()
 
@@ -249,7 +252,7 @@ export function useOrchestrator(agents: Agent[], activeProjectId?: string | null
             sender_agent_id: executingAgent.id,
             data: {
               event: 'AGENT_CREATED',
-              message: `${executingAgent.name} ha contratado a un nuevo trabajador: ${name} (${role}).`,
+              message: `${executingAgent.name} ha contratado a un nuevo trabajador: ${name} (${role}). Motivo: ${reason || 'Estrategia interna'}.`,
               new_agent_id: newAgent?.id
             }
           })
@@ -337,6 +340,148 @@ export function useOrchestrator(agents: Agent[], activeProjectId?: string | null
           })
         }
       }
+
+      // ─── NUEVAS HERRAMIENTAS: MEMORIA Y REFLEXIÓN ────────────────────────
+
+      // EVALUATE_TEAM
+      else if (action.command === 'EVALUATE_TEAM') {
+        const isJarvis = executingAgent.role.toLowerCase().includes('director') || executingAgent.name.toLowerCase().includes('jarvis') || executingAgent.role.toLowerCase().includes('cso') || executingAgent.role.toLowerCase().includes('mano derecha')
+        if (!isJarvis) continue
+
+        // Construir métricas del equipo usando la vista agent_cost_summary si existe, 
+        // o construyendo a mano para asegurar funcionamiento.
+        const { data: usageData } = await supabase.from('token_usage').select('agent_id, input_tokens, output_tokens, cost_usd')
+
+        const statsByAgent = (usageData || []).reduce((acc: any, curr: any) => {
+          if (!acc[curr.agent_id]) acc[curr.agent_id] = { cost: 0, calls: 0 }
+          acc[curr.agent_id].cost += Number(curr.cost_usd || 0)
+          acc[curr.agent_id].calls += 1
+          return acc
+        }, {})
+
+        let evaluationText = "=== REPORTE DE EVALUACIÓN DEL EQUIPO ===\n"
+        agents.forEach(a => {
+          const stats = statsByAgent[a.id] || { cost: 0, calls: 0 }
+          evaluationText += `- ${a.name} (${a.role}) | Status: ${a.employment_status || 'active'} | Desempeño: ${a.performance_score || 100}/100 | Llamadas: ${stats.calls} | Costo Acumulado: $${stats.cost.toFixed(4)}\n`
+        })
+
+        // Devolver los resultados a Jarvis mediante consultationResults
+        consultationResults.push({
+          agentName: 'System Auditor',
+          agentRole: 'Internal',
+          result: evaluationText
+        })
+        console.log(`[AUTONOMY] ✅ EVALUATE_TEAM ejecutado por ${executingAgent.name}`)
+      }
+
+      // UPDATE_AGENT_EMPLOYMENT
+      else if (action.command === 'UPDATE_AGENT_EMPLOYMENT') {
+        const isJarvis = executingAgent.role.toLowerCase().includes('director') || executingAgent.name.toLowerCase().includes('jarvis') || executingAgent.role.toLowerCase().includes('cso') || executingAgent.role.toLowerCase().includes('mano derecha')
+        if (!isJarvis) continue
+
+        const { agent_name, new_status, reason } = action.params
+        if (!agent_name || !new_status || !reason) continue
+
+        const targetAgent = agents.find(a => a.name.toLowerCase().includes(agent_name.toLowerCase()))
+        if (targetAgent) {
+          await supabase.from('agents').update({ employment_status: new_status }).eq('id', targetAgent.id)
+
+          await supabase.from('shared_context').insert({
+            task_id: null,
+            sender_agent_id: executingAgent.id,
+            data: {
+              event: 'AGENT_STATUS_UPDATED',
+              message: `${executingAgent.name} ha cambiado el estado de ${targetAgent.name} a '${new_status}'. Motivo: ${reason}`
+            }
+          })
+          console.log(`[AUTONOMY] ✅ Estado de ${targetAgent.name} actualizado a ${new_status}`)
+        }
+      }
+
+      // UPDATE_AGENT_PROMPT
+      else if (action.command === 'UPDATE_AGENT_PROMPT') {
+        const isJarvis = executingAgent.role.toLowerCase().includes('director') || executingAgent.name.toLowerCase().includes('jarvis') || executingAgent.role.toLowerCase().includes('cso') || executingAgent.role.toLowerCase().includes('mano derecha')
+        if (!isJarvis) continue
+
+        const { agent_name, new_prompt } = action.params
+        if (!agent_name || !new_prompt) continue
+
+        const targetAgent = agents.find(a => a.name.toLowerCase().includes(agent_name.toLowerCase()))
+        if (targetAgent) {
+          await supabase.from('agents').update({ system_prompt: new_prompt }).eq('id', targetAgent.id)
+          console.log(`[AUTONOMY] ✅ Prompt de ${targetAgent.name} optimizado por ${executingAgent.name}`)
+        }
+      }
+
+      // ─── CHECK_CREDENTIAL: INTEGRATION VAULT ────────────────────────────
+      else if (action.command === 'CHECK_CREDENTIAL') {
+        const { integration_id } = action.params
+        if (!integration_id) {
+          console.warn('[AUTONOMY] CHECK_CREDENTIAL: falta el identificador de la API (integration_id).')
+          continue
+        }
+
+        const { data: credResult, error: credError } = await supabase.rpc('check_credential', {
+          p_integration_id: integration_id
+        })
+
+        if (credError) {
+          console.error('[AUTONOMY] Error revisando credencial:', credError)
+          consultationResults.push({
+            agentName: 'Sistema de Seguridad',
+            agentRole: 'Vault',
+            result: `Error de Vault al tratar de acceder a ${integration_id}. Detalles: ${credError.message}`
+          })
+        } else if (credResult) {
+          const credStatus = typeof credResult === 'string' ? JSON.parse(credResult) : credResult
+
+          if (credStatus.available) {
+            console.log(`[AUTONOMY] ✅ Vault confirma que credencial para ${integration_id} EXISTE y está ACTIVA.`)
+            // Log usage
+            await supabase.from('credential_usage_log').insert({
+              integration_id: integration_id,
+              agent_id: executingAgent.id,
+              agent_name: executingAgent.name,
+              action: 'check',
+              metadata: { status: 'success' }
+            })
+
+            consultationResults.push({
+              agentName: 'Sistema de Seguridad',
+              agentRole: 'Vault',
+              result: `La credencial para ${integration_id} ESTÁ DISPONIBLE y puedes proceder a utilizarla.`
+            })
+          } else {
+            console.log(`[AUTONOMY] 🚫 Vault informa que credencial para ${integration_id} NO EXISTE. Bloqueando acceso.`)
+            // Inform everyone and Jarivs
+            await supabase.from('shared_context').insert({
+              task_id: null,
+              sender_agent_id: executingAgent.id,
+              data: {
+                event: 'CREDENTIAL_REQUIRED',
+                message: `Atención Humano: Requiero usar la integración ${integration_id} pero las credenciales no están conectadas en el Panel de API.`,
+                requested_integration: integration_id
+              }
+            })
+
+            // Log usage as failed
+            await supabase.from('credential_usage_log').insert({
+              integration_id: integration_id,
+              agent_id: executingAgent.id,
+              agent_name: executingAgent.name,
+              action: 'check',
+              metadata: { status: 'failed_missing' }
+            })
+
+            consultationResults.push({
+              agentName: 'Sistema de Seguridad',
+              agentRole: 'Vault',
+              result: `ACCESO DENEGADO. La credencial para ${integration_id} NO ESTÁ CONECTADA. He notificado al usuario para que la agregue al Panel de Conexiones. NO puedes completar esta acción por ahora.`
+            })
+          }
+        }
+      }
+
     } // Fin del for loop de actions
 
     // Si hubo consultas a expertos, re-ejecutar al agente original con los resultados
