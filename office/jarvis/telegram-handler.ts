@@ -7,6 +7,15 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// ─── Control de Estado Visual ────────────────────────────────────────────────
+async function updateAgentStatus(agentId: string, status: 'idle' | 'working' | 'thinking') {
+    try {
+        await supabase.from('agents').update({ status }).eq('id', agentId)
+    } catch (e) {
+        console.warn(`Error actualizando estado visual del agente ${agentId}:`, e)
+    }
+}
+
 // ─── Parser de Acciones ──────────────────────────────────────────────────────
 function parseActionsFromText(text: string): { command: string, params: Record<string, string> }[] {
     const regex = /\[\[ACTION:\s*(\w+)\s*\|([\s\S]*?)\]\]/g
@@ -38,6 +47,7 @@ export async function processJarvisMessage(
     chatId: string,
     username: string
 ): Promise<void> {
+    let agentId = 'system-telegram'; // Default fallback
     try {
         console.log('PROCESANDO MENSAJE:', userMessage)
         await sendTypingAction(chatId)
@@ -55,7 +65,7 @@ export async function processJarvisMessage(
 
         const systemPrompt = jarvis?.system_prompt || 'Eres J.A.R.V.I.S., la IA estratégica de Brezan. Responde de forma directa.';
         const modelType = jarvis?.model_type || 'Gemini-Flash';
-        const agentId = jarvis?.id || 'system-telegram';
+        agentId = jarvis?.id || 'system-telegram';
 
         // 2. Recuperar la memoria (Historial) de Telegram desde shared_context
         const contextKey = `telegram_mem_${chatId}`;
@@ -83,6 +93,8 @@ export async function processJarvisMessage(
         while (keepThinking && iterations < 3) {
             keepThinking = false;
             iterations++;
+
+            await updateAgentStatus(agentId, 'thinking');
 
             console.log(`LLAMANDO A JARVIS (Iteración ${iterations}) CON HISTORIAL DE:`, chatHistory.length, 'mensajes');
             const response = await fetch(
@@ -119,6 +131,7 @@ export async function processJarvisMessage(
 
             // Ejecutor interno de herramientas para Telegram
             if (actions.length > 0) {
+                await updateAgentStatus(agentId, 'working');
                 await sendTypingAction(chatId); // Reactivar el typing mientras hace peticiones
                 for (const action of actions) {
                     let actionResult = "Ejecutado.";
@@ -130,6 +143,7 @@ export async function processJarvisMessage(
                             if (!targetAgent) {
                                 actionResult = `Error: Agente "${action.params.agent_name}" no encontrado en BDD.`;
                             } else {
+                                await updateAgentStatus(targetAgent.id, 'thinking');
                                 const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/agent/chat`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -142,6 +156,7 @@ export async function processJarvisMessage(
                                 });
                                 const ans = await res.json();
                                 actionResult = ans.result || 'Sin respuesta.';
+                                await updateAgentStatus(targetAgent.id, 'idle');
                             }
                         } else {
                             // Resto de herramientas operativas (DATA_ANALYZER, FILE_MANAGER, WEB_SEARCH, EXECUTE_CODE)
@@ -194,6 +209,8 @@ export async function processJarvisMessage(
         console.error('ERROR EN processJarvisMessage:', error)
         await sendMessage('telegram', chatId,
             'Error interno grave en la unidad de procesamiento. Por favor inténtelo de nuevo.')
+    } finally {
+        await updateAgentStatus(agentId, 'idle');
     }
 }
 
