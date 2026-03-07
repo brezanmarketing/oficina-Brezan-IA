@@ -111,7 +111,7 @@ export const Registry: ToolRegistration[] = [
             name: 'communications',
             execute: async (p) => {
                 if (p.action === 'alert') return Tools.Communications.sendAlert(p.level, p.message);
-                if (p.action === 'send') return Tools.Communications.sendMessage(p.channel, p.to, p.message);
+                if (p.action === 'send') return Tools.Communications.sendMessage(p.channel, p.to, p.text);
             }
         },
         triggers: ['telegram', 'slack', 'notificar', 'alerta', 'urgente', 'avisar al owner', 'mensaje'],

@@ -40,7 +40,12 @@ export async function POST(req: NextRequest) {
         } else if (command === 'DATA_ANALYZER') {
             executeInput = { action: params.action, data: params.data, type: params.type, format: params.format };
         } else if (command === 'SEND_MESSAGE') {
-            executeInput = { action: 'send', channel: params.channel, to: params.to, message: params.message };
+            executeInput = {
+                action: 'send',
+                channel: params.channel,
+                to: params.to || params.chat_id,
+                text: params.text || params.message || params.content || ''
+            };
         } else if (command === 'EXECUTE_CODE') {
             executeInput = { language: params.language, code: params.code };
         }
