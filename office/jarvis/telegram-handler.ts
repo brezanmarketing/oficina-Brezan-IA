@@ -19,9 +19,12 @@ export async function processJarvisMessage(
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: userMessage,
-                    source: 'telegram',
-                    chatId
+                    agentId: 'system-telegram',
+                    modelType: 'Gemini-Flash',
+                    systemPrompt: 'Eres J.A.R.V.I.S., la Inteligencia Artificial de la Oficina Brezan. Estás hablando directamente por Telegram con el CEO. Responde de manera profesional, directa y resolutiva.',
+                    messages: [
+                        { role: 'user', content: userMessage }
+                    ]
                 })
             }
         )
@@ -30,8 +33,13 @@ export async function processJarvisMessage(
         const data = await response.json()
         console.log('RESPUESTA DE JARVIS:', JSON.stringify(data))
 
-        const jarvisReply = data.reply || data.message ||
-            data.content || 'Sin respuesta'
+        // La API /agent/chat devuelve el texto principal en data.result
+        let rawReply = data.result || data.reply || data.message ||
+            data.content || data.error || 'Sin respuesta'
+
+        // Limpiamos los bloques de ACTION para que el usuario no vea código crudo
+        rawReply = rawReply.replace(/\[\[ACTION:[\s\S]*?\]\]/g, '').trim()
+        const jarvisReply = rawReply || "Comando procesado en background."
 
         console.log('ENVIANDO A TELEGRAM:', jarvisReply)
         await sendMessage('telegram', chatId, jarvisReply)
