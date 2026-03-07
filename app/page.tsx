@@ -23,6 +23,7 @@ import { DirectChatPanel } from '@/components/DirectChatPanel'
 import { CompanyDirective } from '@/components/CompanyDirective'
 import { ProjectTeamManager } from '@/components/ProjectTeamManager'
 import { useProject } from '@/context/ProjectContext'
+import JarvisConnections from './connections/page'
 
 export default function HomePage() {
   const [activeSection, setActiveSection] = useState('dashboard')
@@ -255,6 +256,13 @@ export default function HomePage() {
         {activeSection === 'office' && (
           <div className="p-6 h-[calc(100vh-73px)] overflow-hidden">
             <OfficeMap agents={agents} />
+          </div>
+        )}
+
+        {/* Connections Section */}
+        {activeSection === 'connections' && (
+          <div className="p-6 h-[calc(100vh-73px)] overflow-hidden">
+            <JarvisConnections />
           </div>
         )}
 

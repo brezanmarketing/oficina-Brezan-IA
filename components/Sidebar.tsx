@@ -16,6 +16,7 @@ interface SidebarProps {
 const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'office', label: 'Oficina', icon: Activity },
+    { id: 'connections', label: 'Conexiones API', icon: Zap },
     { id: 'settings', label: 'Configuración', icon: Settings },
 ]
 
