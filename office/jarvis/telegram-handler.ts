@@ -171,6 +171,40 @@ export async function processJarvisMessage(
                                 actionResult = ans.result || 'Sin respuesta.';
                                 await updateAgentStatus(targetAgent.id, 'idle');
                             }
+                        } else if (action.command === 'EXECUTE_OBJECTIVE') {
+                            // Crear una misión real en la base de datos
+                            const { objective } = action.params;
+                            if (!objective) {
+                                actionResult = "Error: Falta descripción del objetivo.";
+                            } else {
+                                // 1. Crear Tarea (Misión)
+                                const { data: projects } = await supabase.from('projects').select('id').limit(1).single();
+                                const projectId = projects?.id || null;
+
+                                const { data: newTask, error: taskErr } = await supabase.from('tasks').insert({
+                                    title: `Objetivo Telegram: ${objective.substring(0, 30)}...`,
+                                    description: objective,
+                                    assigned_agent_id: agentId, // Se auto-asigna o empieza por él mismo
+                                    chain_of_command: [agentId], // Cadena simple por defecto
+                                    current_step_index: 0,
+                                    status: 'in_progress',
+                                    project_id: projectId
+                                }).select().single();
+
+                                if (taskErr) throw taskErr;
+
+                                // 2. Insertar evento de inicio
+                                await supabase.from('shared_context').insert({
+                                    task_id: newTask.id,
+                                    data: {
+                                        event: 'TASK_STARTED',
+                                        message: `Misión iniciada vía Telegram: "${objective}"`,
+                                        prompt: objective
+                                    }
+                                });
+
+                                actionResult = `Misión lanzada con éxito (ID: ${newTask.id}). He registrado el objetivo en el sistema y comenzaré a trabajar en ello.`;
+                            }
                         } else {
                             // Resto de herramientas operativas (DATA_ANALYZER, FILE_MANAGER, WEB_SEARCH, EXECUTE_CODE)
                             const toolRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/agent/run-tool`, {
