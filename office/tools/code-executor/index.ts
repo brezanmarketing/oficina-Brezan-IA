@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import crypto from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import os from 'os';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -101,8 +102,8 @@ async function executeJavascript(code: string, timeoutMs: number): Promise<ExecR
 async function executePython(code: string, timeoutMs: number): Promise<ExecResult> {
     const startTime = Date.now();
 
-    // Create temporary sandbox dir
-    const sandboxDir = path.join(process.cwd(), '.sandbox', Date.now().toString());
+    // Create temporary sandbox dir in OS temp directory
+    const sandboxDir = path.join(os.tmpdir(), '.sandbox', Date.now().toString());
     await fs.mkdir(sandboxDir, { recursive: true });
 
     const scriptPath = path.join(sandboxDir, 'script.py');
