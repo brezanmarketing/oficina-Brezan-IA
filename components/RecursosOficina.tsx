@@ -331,8 +331,8 @@ export default function RecursosOficina() {
                             key={folder.id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
+                            className="group relative bg-slate-900/40 border border-white/10 rounded-2xl p-5 cursor-pointer hover:border-indigo-500/50 hover:bg-slate-900/60 transition-all flex items-center gap-4"
                             onClick={() => setCurrentFolderId(folder.id)}
-                            className="group bg-slate-900/40 border border-white/10 rounded-2xl p-5 cursor-pointer hover:border-indigo-500/50 hover:bg-slate-900/60 transition-all flex items-center gap-4"
                         >
                             <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <Folder className="w-6 h-6 text-indigo-400 fill-indigo-400/20" />
@@ -341,6 +341,19 @@ export default function RecursosOficina() {
                                 <h3 className="text-white font-bold text-sm truncate">{folder.name}</h3>
                                 <p className="text-[10px] text-slate-500 uppercase font-mono">Carpeta</p>
                             </div>
+
+                            <button
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`¿Eliminar carpeta "${folder.name}" y todo su contenido?`)) {
+                                        await supabase.from('office_folders').delete().eq('id', folder.id);
+                                        fetchData();
+                                    }
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all shrink-0"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
                         </motion.div>
                     ))}
 
@@ -357,6 +370,9 @@ export default function RecursosOficina() {
                                 }}
                                 onDelete={async () => {
                                     if (confirm('¿Eliminar recurso?')) {
+                                        // 1. Borrar de Storage
+                                        await supabase.storage.from('office-resources').remove([res.storage_path])
+                                        // 2. Borrar de DB
                                         await supabase.from('office_resources').delete().eq('id', res.id)
                                         fetchData()
                                     }
