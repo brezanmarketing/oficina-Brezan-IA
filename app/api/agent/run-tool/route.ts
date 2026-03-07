@@ -40,10 +40,14 @@ export async function POST(req: NextRequest) {
         } else if (command === 'DATA_ANALYZER') {
             executeInput = { action: params.action, data: params.data, type: params.type, format: params.format };
         } else if (command === 'SEND_MESSAGE') {
+            const chatId = params.to === 'CEO' || isNaN(Number(params.to))
+                ? '1404171793'  // fallback al chat_id real del owner
+                : params.to
+
             executeInput = {
                 action: 'send',
                 channel: params.channel,
-                to: params.to || params.chat_id,
+                to: chatId,
                 text: params.text || params.message || params.content || ''
             };
         } else if (command === 'EXECUTE_CODE') {

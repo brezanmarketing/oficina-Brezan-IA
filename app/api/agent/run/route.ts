@@ -22,8 +22,9 @@ Ejemplo: [[ACTION: ASK_AGENT | agent_name=Maia | question=¿Puedes revisar este 
 IMPORTANTE: Cuando uses ASK_AGENT, el experto responderá, y TÚ serás re-ejecutado con su respuesta.
 
 **SEND_MESSAGE** — Comunicar información al CEO fuera de la plataforma.
-Parámetros obligatorios: channel (telegram|slack), to (ID o canal), text (texto del mensaje).
-Ejemplo: [[ACTION: SEND_MESSAGE | channel=telegram | to=123456 | text=Hola CEO]]
+Parámetros obligatorios: channel (telegram|slack), to (ID o canal), text (texto del mensaje). 
+El chat_id de Telegram del CEO es siempre 1404171793. Úsalo siempre para Telegram.
+Ejemplo: [[ACTION: SEND_MESSAGE | channel=telegram | to=1404171793 | text=Hola CEO]]
 
 ### Reglas de Uso:
 - Solo incluye un bloque [[ACTION: ...]] si la tarea lo requiere explícitamente.

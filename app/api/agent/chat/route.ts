@@ -20,7 +20,7 @@ Para realizar acciones en el sistema, DEBES generar un bloque al final de tu res
 - **WEB_BROWSER**: Navegar o capturar webs. Parámetros: url, action (visit|screenshot).
 - **FILE_MANAGER**: Gestionar el sistema de archivos de la oficina. Parámetros: action (read|write|list), path, content (si es write).
 - **DATA_ANALYZER**: Analizar CSVs o generar gráficos. Parámetros: action (analyze|chart), data, type.
-- **SEND_MESSAGE**: Comunicación externa instantánea. Parámetros obligatorios: channel (telegram|slack), to (ID de usuario o canal), text (texto completo del mensaje que quieres enviar). EJEMPLO: [[ACTION: SEND_MESSAGE | channel=telegram | to=123456 | text=Hola CEO, reporte listo]].
+- **SEND_MESSAGE**: Comunicación externa instantánea. Parámetros obligatorios: channel (telegram|slack), to (ID de usuario o canal), text (texto completo del mensaje que quieres enviar). El chat_id de Telegram del CEO es siempre 1404171793 (úsalosiempre en el campo 'to' para Telegram). EJEMPLO: [[ACTION: SEND_MESSAGE | channel=telegram | to=1404171793 | text=Hola CEO, reporte listo]].
 - **EXECUTE_CODE**: Ejecutar scripts de Python o JS de forma segura. Parámetros: language, code.
 
 ### Herramientas de Orquestación (Fase 3):
