@@ -6,6 +6,7 @@ import {
     Lightbulb, Code2, Database, Layers, MessageSquare
 } from 'lucide-react'
 import { Agent } from '@/lib/types'
+import { JarvisVisualizer } from './JarvisVisualizer'
 
 interface AgentCardProps {
     agent: Agent
@@ -71,6 +72,9 @@ export function AgentCard({ agent, onDelete, onClick, onChat }: AgentCardProps) 
     const IconComponent = iconMap[agent.avatar_config?.icon] || Bot
     const gradient = agent.avatar_config?.gradient || 'from-indigo-500 to-purple-600'
     const modelColor = modelColors[agent.model_type] || '#6366f1'
+    const isJarvis = agent.name.toLowerCase().includes('jarvis')
+    const finalGradient = isJarvis ? 'from-cyan-500 to-blue-600' : gradient
+    const finalPulseColor = isJarvis ? (agent.status === 'idle' ? 'transparent' : '#00f2ff') : pulseColor[agent.status]
 
     return (
         <motion.div
@@ -86,7 +90,7 @@ export function AgentCard({ agent, onDelete, onClick, onChat }: AgentCardProps) 
             {/* Aura de estado */}
             <motion.div
                 className="absolute inset-0 rounded-2xl blur-xl"
-                style={{ backgroundColor: pulseColor[agent.status] }}
+                style={{ backgroundColor: finalPulseColor }}
                 animate={getAuraAnimation(agent.status)}
             />
 
@@ -101,7 +105,7 @@ export function AgentCard({ agent, onDelete, onClick, onChat }: AgentCardProps) 
                     <div className="flex items-center gap-3">
                         {/* Avatar */}
                         <motion.div
-                            className={`relative w - 12 h - 12 rounded - xl bg - gradient - to - br ${gradient} flex items - center justify - center shadow - lg`}
+                            className={`relative w-12 h-12 rounded-xl bg-gradient-to-br ${finalGradient} flex items-center justify-center shadow-lg overflow-hidden`}
                             animate={
                                 agent.status === 'idle'
                                     ? { scale: [1, 1.05, 1], filter: ['brightness(1)', 'brightness(1.1)', 'brightness(1)'] }
@@ -117,7 +121,12 @@ export function AgentCard({ agent, onDelete, onClick, onChat }: AgentCardProps) 
                                         : { duration: 0.3 }
                             }
                         >
-                            <IconComponent className="w-6 h-6 text-white" />
+                            {isJarvis ? (
+                                <JarvisVisualizer status={agent.status} size={32} />
+                            ) : (
+                                <IconComponent className="w-6 h-6 text-white" />
+                            )}
+
                             {/* Indicador de status */}
                             <motion.span
                                 className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-slate-900"
@@ -126,8 +135,8 @@ export function AgentCard({ agent, onDelete, onClick, onChat }: AgentCardProps) 
                                         agent.status === 'idle'
                                             ? '#6b7280'
                                             : agent.status === 'thinking'
-                                                ? '#6366f1'
-                                                : '#f59e0b',
+                                                ? (isJarvis ? '#00f2ff' : '#6366f1')
+                                                : (isJarvis ? '#00f2ff' : '#f59e0b'),
                                 }}
                                 animate={
                                     agent.status !== 'idle'
