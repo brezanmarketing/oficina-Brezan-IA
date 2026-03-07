@@ -14,11 +14,15 @@ async function updateAgentStatus(agentId: string, status: 'idle' | 'working' | '
         await supabase.from('agents').update({ status }).eq('id', agentId);
 
         // 2. Insertar mensaje silencioso para disparar el "Jump" visual y el refresh del mapa
-        // Usamos un formato que el frontend ignore como texto pero detecte como trigger
-        await supabase.from('agent_messages').insert({
-            agent_id: agentId,
-            content: `[[STATUS_UPDATE:${status}]]`,
-            role: 'assistant'
+        // Usamos la tabla shared_context que sí existe y tiene Realtime habilitado
+        await supabase.from('shared_context').insert({
+            sender_agent_id: agentId,
+            task_id: null,
+            data: {
+                event: 'STATUS_UPDATE',
+                status: status,
+                silent: true
+            }
         });
     } catch (e) {
         console.warn(`Error actualizando estado visual del agente ${agentId}:`, e);

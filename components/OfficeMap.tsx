@@ -559,9 +559,9 @@ export function OfficeMap({ agents: propAgents }: { agents: Agent[] }) {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
                 fetchTasks()
             })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'agent_messages' }, payload => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shared_context' }, payload => {
                 const newMsg = payload.new
-                const agentId = newMsg.sender_agent_id || newMsg.agent_id
+                const agentId = newMsg.sender_agent_id
                 if (agentId) {
                     setAgentMessages(prev => ({ ...prev, [agentId]: Date.now() }))
                 }
