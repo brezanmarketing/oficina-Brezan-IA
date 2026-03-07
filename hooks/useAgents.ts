@@ -46,19 +46,20 @@ export function useAgents() {
     useEffect(() => {
         fetchAgents()
 
-        // Suscripción Realtime a cambios en agents
+        // Suscripción Realtime a cambios en agents con log para depurar
         const channel = supabase
-            .channel('agents-realtime')
+            .channel('agents-global-sync')
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'agents' },
                 (payload) => {
+                    console.log('Realtime Update Received:', payload.eventType, payload.new?.name, payload.new?.status);
                     if (payload.eventType === 'INSERT') {
                         setAgents((prev) => [...prev, payload.new as Agent])
                     } else if (payload.eventType === 'UPDATE') {
                         setAgents((prev) =>
                             prev.map((a) =>
-                                a.id === payload.new.id ? (payload.new as Agent) : a
+                                a.id === payload.new.id ? { ...a, ...(payload.new as Agent) } : a
                             )
                         )
                     } else if (payload.eventType === 'DELETE') {
@@ -68,7 +69,9 @@ export function useAgents() {
                     }
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                console.log('Realtime Subscription Status:', status);
+            })
 
         return () => {
             supabase.removeChannel(channel)
