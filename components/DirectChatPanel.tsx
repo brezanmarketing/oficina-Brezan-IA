@@ -418,7 +418,7 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
                             ...messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
                             {
                                 role: 'system',
-                                content: `CRÍTICO: La herramienta intentada (${action.command}) ha fallado con este error: "${err.message}".
+                                content: `CRÍTICO: La herramienta intentada (${currentAction?.command || 'desconocida'}) ha fallado con este error: "${err.message}".
 Tú eres J.A.R.V.I.S. Informa al CEO con elegancia.
 INSTRUCCIÓN IMPORTANTE: Antes de pedir datos (como un ID de Telegram), REVISA los mensajes anteriores. Si el usuario ya te dio el ID, NO lo pidas de nuevo. En su lugar, explica que cometiste un error técnico y que lo reintentarás tras corregir tu lógica interna.
 Dile exactamante por qué falló la herramienta (si es comprensible) y si requiere acción del usuario (como configurar un token en "Conexiones API") o si es un error tuyo (como mandar un mensaje vacío).`
