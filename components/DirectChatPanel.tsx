@@ -30,22 +30,21 @@ function parseActionsFromText(text: string): AgentAction[] {
     const regex = /\[\[ACTION:\s*(\w+)\s*\|([\s\S]*?)\]\]/g
     const actions: AgentAction[] = []
     let match: RegExpExecArray | null
+
     while ((match = regex.exec(text)) !== null) {
         const command = match[1].trim()
-        const rawParams = match[2] // string completo entre pipes
+        const rawParams = match[2]
         const params: Record<string, string> = {}
 
-        // Dividir por pipes, pero con cuidado si hay pipes dentro del contenido. 
-        // Mejor estrategia: regex para capturar keys=values
-        const paramRegex = /([a-zA-Z0-9_]+)\s*=\s*([\s\S]*?)(?=(?:\|[a-zA-Z0-9_]+\s*=)|$)/g;
-        let pMatch: RegExpExecArray | null;
-
-        while ((pMatch = paramRegex.exec(rawParams)) !== null) {
-            let key = pMatch[1].trim();
-            let value = pMatch[2].trim();
-            // Remover pipes residuales al final del value si existieran por culpa del regex
-            if (value.endsWith('|')) value = value.slice(0, -1).trim()
-            params[key] = value;
+        // Separar por "|" primero, luego por "="
+        const pairs = rawParams.split('|')
+        for (const pair of pairs) {
+            const eqIndex = pair.indexOf('=')
+            if (eqIndex !== -1) {
+                const key = pair.substring(0, eqIndex).trim()
+                const value = pair.substring(eqIndex + 1).trim()
+                if (key) params[key] = value
+            }
         }
 
         actions.push({ command, params })
