@@ -223,8 +223,10 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
         setMessages(prev => prev.map(m => m.id === msgId ? { ...m, actionStatus: 'executing' } : m))
         await updateAgentStatus(agent.id, 'thinking')
 
+        let currentAction: AgentAction | null = null;
         try {
             for (const action of actions) {
+                currentAction = action;
                 if (action.command === 'CREATE_AGENT') {
                     const { name, role, model, prompt: agentPrompt } = action.params
                     if (!name || !role || !agentPrompt) throw new Error('Parámetros incompletos para CREATE_AGENT')
