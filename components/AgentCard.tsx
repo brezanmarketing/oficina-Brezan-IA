@@ -72,9 +72,9 @@ export function AgentCard({ agent, onDelete, onClick, onChat }: AgentCardProps) 
     const IconComponent = iconMap[agent.avatar_config?.icon] || Bot
     const gradient = agent.avatar_config?.gradient || 'from-indigo-500 to-purple-600'
     const modelColor = modelColors[agent.model_type] || '#6366f1'
-    const isJarvis = agent.name.toLowerCase().includes('jarvis')
-    const finalGradient = isJarvis ? 'from-cyan-500 to-blue-600' : gradient
-    const finalPulseColor = isJarvis ? (agent.status === 'idle' ? 'transparent' : '#00f2ff') : pulseColor[agent.status]
+    const isJarvis = agent.name.toLowerCase().replace(/[^a-z]/g, '').includes('jarvis')
+    const finalGradient = isJarvis ? 'from-cyan-400 to-blue-600' : gradient
+    const finalPulseColor = isJarvis ? (agent.status === 'idle' ? '#00f2ff22' : '#00f2ffaa') : pulseColor[agent.status]
 
     return (
         <motion.div
