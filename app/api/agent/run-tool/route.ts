@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Registry } from '@/office/jarvis/tool-registry';
+import { Registry, executeTool } from '@/office/jarvis/tool-registry';
+import { createClient } from '@/lib/supabase/server';
+
 
 export async function POST(req: NextRequest) {
     try {
@@ -57,9 +59,15 @@ export async function POST(req: NextRequest) {
         console.log('PARAMS RECIBIDOS:', JSON.stringify(params))
         console.log('EXECUTE INPUT:', JSON.stringify(executeInput))
 
-        const result = await toolDef.tool.execute(executeInput);
+        // 1. Obtener el agente actual (default J.A.R.V.I.S. si no se pasa uno)
+        const supabase = await createClient();
+        const { data: agent } = await supabase.from('agents').select('*').eq('name', 'J.A.R.V.I.S.').single();
+
+        // 2. Ejecutar a través del wrapper auditado y seguro
+        const result = await executeTool(toolName, executeInput, agent || { id: 'unknown', role: 'Coordinator' });
 
         return NextResponse.json({ success: true, result });
+
     } catch (err: any) {
         console.error('API /agent/run-tool Error:', err);
         return NextResponse.json({ error: err.message || 'Error interno ejecutando herramienta' }, { status: 500 });

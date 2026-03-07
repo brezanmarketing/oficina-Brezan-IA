@@ -7,6 +7,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 import { securityLayer } from './phase4/security-layer';
 import { auditLogger } from './phase4/audit-logger';
+import { costController } from './phase4/cost-controller';
+
 
 export interface ToolInstance {
     name: string;
@@ -174,11 +176,24 @@ export async function executeTool(toolName: string, input: any, agent: any): Pro
             result,
             duration,
             status,
-            agent.project_id,
-            agent.task_id
+            agent.project_id || 'default',
+            agent.task_id || 'tool_execution'
+        );
+
+        // 6. CONTROL DE COSTES: Registrar uso de la herramienta
+        // Para herramientas estimamos tokens basados en el tamaño de input/output o coste fijo
+        await costController.recordCost(
+            agent.id,
+            agent.project_id || 'default',
+            agent.task_id || 'tool_execution',
+            'tool-usage', // Modelo especial para herramientas
+            JSON.stringify(input).length / 4, // Aproximación de tokens in
+            JSON.stringify(result).length / 4, // Aproximación de tokens out
+            toolName
         );
     }
 }
+
 
 export function selectTool(task_description: string): ToolRegistration[] {
     const words: string[] = task_description.toLowerCase().match(/\\b(\\w+)\\b/g) || [];

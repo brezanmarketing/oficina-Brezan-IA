@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logTokenUsage } from '@/lib/usage'
 import { getCredential } from '@/office/tools/credential-manager'
 import { createClient } from '@/lib/supabase/server'
+import { costController } from '@/office/jarvis/phase4/cost-controller'
+
 
 const ACTIONS_PROTOCOL = `
 ---
@@ -97,6 +99,16 @@ ${ACTIONS_PROTOCOL}
             const usageMetadata = data.usage || {}
 
             if (agentId) {
+                // Registrar el coste real en el controlador de la Fase 4
+                await costController.recordCost(
+                    agentId,
+                    'default', // project_id (fallback)
+                    'chat_interaction', // task_id (contexto telegram)
+                    modelType,
+                    usageMetadata.prompt_tokens || 0,
+                    usageMetadata.completion_tokens || 0
+                )
+
                 await logTokenUsage({
                     agentId,
                     model: modelType,
@@ -107,6 +119,7 @@ ${ACTIONS_PROTOCOL}
                     }
                 })
             }
+
 
             return NextResponse.json({
                 result: resultText,
@@ -164,12 +177,23 @@ ${ACTIONS_PROTOCOL}
 
         // Registrar uso si hay agentId
         if (agentId) {
+            // Registrar el coste real en el controlador de la Fase 4
+            await costController.recordCost(
+                agentId,
+                'default',
+                'chat_interaction',
+                modelType || 'Gemini-Flash',
+                usageMetadata.promptTokenCount ?? usageMetadata.prompt_tokens ?? 0,
+                usageMetadata.candidatesTokenCount ?? usageMetadata.completion_tokens ?? 0
+            )
+
             await logTokenUsage({
                 agentId,
                 model: modelType || 'Gemini-Flash',
                 usage: usageMetadata
             })
         }
+
 
         return NextResponse.json({
             result: resultText,
