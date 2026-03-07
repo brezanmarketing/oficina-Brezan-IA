@@ -211,33 +211,40 @@ const SpeechBubble = ({ message, type = 'speech', partnerName }: { message: stri
             initial={{ opacity: 0, scale: 0.5, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.5, y: 10 }}
-            className="mb-2 relative z-[100]"
+            className="mb-3 relative z-[100]"
         >
             <div className={`
-                px-3 py-2 rounded-sm border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)]
-                ${type === 'thinking' ? 'bg-amber-100' : 'bg-white'}
-                max-w-[180px] min-w-[50px] text-center
+                px-3 py-2 rounded-xl backdrop-blur-md border-2 
+                ${type === 'thinking'
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-white/10 border-white/20'
+                }
+                shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]
+                max-w-[200px] min-w-[60px] text-center
             `}>
                 {partnerName && (
-                    <div className="flex items-center justify-center gap-1 mb-1 border-b border-black/10 pb-1">
-                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                        <span className="text-[7px] font-bold text-indigo-700 uppercase tracking-tighter">Co-op: {partnerName}</span>
+                    <div className="flex items-center justify-center gap-1 mb-1 border-b border-white/10 pb-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                        <span className="text-[7px] font-bold text-indigo-300 uppercase tracking-wider">Colab: {partnerName}</span>
                     </div>
                 )}
-                <p className="font-mono text-[9px] text-slate-900 leading-normal break-words font-bold uppercase tracking-tight">
+                <p className={`font-medium text-[10px] leading-relaxed break-words tracking-wide
+                    ${type === 'thinking' ? 'text-amber-200' : 'text-white'}
+                `}>
                     {type === 'thinking' ? (
-                        <span className="flex justify-center gap-0.5">
-                            <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }}>.</motion.span>
-                            <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.3 }}>.</motion.span>
-                            <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.6 }}>.</motion.span>
+                        <span className="flex justify-center gap-1">
+                            <motion.span animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }}>●</motion.span>
+                            <motion.span animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}>●</motion.span>
+                            <motion.span animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}>●</motion.span>
                         </span>
                     ) : message}
                 </p>
             </div>
-            {/* Tail */}
+            {/* Glass Tail */}
             <div className={`
-                absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-r-2 border-b-2 border-black
-                ${type === 'thinking' ? 'bg-amber-100' : 'bg-white'}
+                absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-r-2 border-b-2 
+                ${type === 'thinking' ? 'bg-amber-900/40 border-amber-500/30' : 'bg-slate-900/40 border-white/20'}
+                backdrop-blur-sm
             `} />
         </motion.div>
     )
@@ -365,8 +372,8 @@ const IsoAgent = ({ agent, pos, isThinking, lastMsgTrigger, agents }: { agent: A
             initial={false}
             animate={{
                 x: isoPos.x,
-                y: isWorking ? isoPos.y + 4 : isoPos.y, // Bajar un poco al estar sentado
-                zIndex
+                y: isWorking ? isoPos.y + 4 : isoPos.y,
+                zIndex: zIndex + (showBubble ? 50 : 0) // Subir zIndex si tiene mensaje activo
             }}
             transition={{
                 x: { duration: 1.5, ease: "easeInOut" },
@@ -374,19 +381,33 @@ const IsoAgent = ({ agent, pos, isThinking, lastMsgTrigger, agents }: { agent: A
             }}
         >
             <div className="relative pointer-events-auto cursor-pointer">
-                {/* SOMBRA */}
-                {!isWorking && <div className="absolute -left-2 -top-1 w-[16px] h-[8px] bg-black/30 rounded-[100%] blur-[1px]" />}
+                {/* SOMBRA DINÁMICA */}
+                <motion.div
+                    className="absolute -left-2 -top-1 w-[16px] h-[8px] bg-black/40 rounded-[100%] blur-[2px]"
+                    animate={{
+                        scale: (isThinking || isJumping) ? 0.7 : 1,
+                        opacity: (isThinking || isJumping) ? 0.2 : 0.5,
+                    }}
+                />
 
-                {/* CUERPO HUMANOIDE */}
+                {/* CUERPO HUMANOIDE CON LEVITACIÓN */}
                 <motion.div
                     className="relative flex flex-col items-center"
                     animate={
-                        isJumping ? { y: [0, -10, 0] } :
-                            (isMoving ? { y: [0, -4, 0] } : (isWorking ? { rotate: [0, -2, 0, 2, 0] } : {}))
+                        isJumping ? { y: [0, -12, 0] } :
+                            isThinking ? { y: [0, -8, 0], scale: [1, 1.05, 1] } :
+                                isMoving ? { y: [0, -4, 0] } :
+                                    isWorking ? { rotate: [0, -1, 0, 1, 0], y: [0, -2, 0] } :
+                                        { y: [0, -4, 0] } // Flotación suave en reposo
                     }
                     transition={{
-                        y: { duration: isJumping ? 0.3 : 0.4, repeat: isMoving ? Infinity : 0, ease: "linear" },
-                        rotate: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                        y: {
+                            duration: isJumping ? 0.4 : (isThinking ? 1.5 : 2.5),
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                        },
+                        rotate: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                        scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
                     }}
                 >
                     {/* CABEZA */}
@@ -399,48 +420,46 @@ const IsoAgent = ({ agent, pos, isThinking, lastMsgTrigger, agents }: { agent: A
                             />
                         )}
                         {/* OJOS */}
-                        <div className="absolute top-[5px] left-[2px] w-[2px] h-[2px] bg-slate-900 rounded-full" />
-                        <div className="absolute top-[5px] right-[2px] w-[2px] h-[2px] bg-slate-900 rounded-full" />
+                        <div className="absolute top-[5px] left-[2px] w-[2px] h-[2px] bg-slate-900/80 rounded-full" />
+                        <div className="absolute top-[5px] right-[2px] w-[2px] h-[2px] bg-slate-900/80 rounded-full" />
                     </div>
 
                     {/* TORSO / CAMISETA */}
                     <div
-                        className="w-[14px] h-[16px] -mt-1 rounded-sm relative z-10 shadow-md border-b-2 border-black/20"
+                        className="w-[14px] h-[16px] -mt-1 rounded-sm relative z-10 shadow-md border-b-2 border-black/20 overflow-hidden"
                         style={{ backgroundColor: color }}
                     >
+                        {/* Reflejo premium */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-40" />
+
                         {/* BRAZOS */}
-                        <div className="absolute -left-1.5 top-0 w-[4px] h-[10px] bg-white/20 rounded-full" />
-                        <div className="absolute -right-1.5 top-0 w-[4px] h-[10px] bg-white/20 rounded-full" />
+                        <div className="absolute -left-1.5 top-0 w-[4px] h-[10px] bg-white/10 rounded-full" />
+                        <div className="absolute -right-1.5 top-0 w-[4px] h-[10px] bg-white/10 rounded-full" />
                     </div>
 
-                    {/* PIERNAS */}
+                    {/* PIERNAS (Solo si no está sentado/working) */}
                     {!isWorking && (
                         <div className="flex gap-1 -mt-0.5 z-0">
                             <div className="w-[4px] h-[6px] bg-slate-800 rounded-b-sm" />
                             <div className="w-[4px] h-[6px] bg-slate-800 rounded-b-sm" />
                         </div>
                     )}
-                    {isWorking && (
-                        <div className="absolute -bottom-2 w-full flex justify-center">
-                            <div className="w-4 h-1 bg-black/10 blur-[1px]" />
-                        </div>
-                    )}
 
-                    {/* EFECTO THINKING (GLOW) */}
+                    {/* AURA DE PENSAMIENTO */}
                     <AnimatePresence>
                         {isThinking && (
                             <motion.div
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1.2 }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                                className="absolute -inset-2 bg-amber-400/20 rounded-full blur-md z-0"
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: [0.1, 0.4, 0.1], scale: [1, 1.5, 1] }}
+                                exit={{ opacity: 0 }}
+                                className="absolute -inset-4 bg-indigo-500/10 rounded-full blur-xl z-0"
                             />
                         )}
                     </AnimatePresence>
                 </motion.div>
 
                 {/* ETIQUETAS Y BOCADILLOS */}
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-50">
+                <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-[110]">
                     <AnimatePresence mode="wait">
                         {isThinking ? (
                             <SpeechBubble key="thinking" message="..." type="thinking" partnerName={partner?.name} />
@@ -449,9 +468,12 @@ const IsoAgent = ({ agent, pos, isThinking, lastMsgTrigger, agents }: { agent: A
                         ) : null}
                     </AnimatePresence>
 
-                    {/* Nombre (siempre visible) */}
-                    <div className="mt-1 px-1.5 py-0.5 bg-slate-900/95 text-white font-mono text-[7px] whitespace-nowrap rounded-sm shadow-md border border-white/20 uppercase tracking-[0.1em]">
-                        {agent.name}
+                    {/* Nombre (Glassmorphism Style) */}
+                    <div className="mt-1 px-2.5 py-1 backdrop-blur-md bg-white/5 border border-white/20 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor]" style={{ backgroundColor: color }} />
+                        <span className="text-white font-bold text-[8px] uppercase tracking-[0.2em] drop-shadow-md">
+                            {agent.name}
+                        </span>
                     </div>
                 </div>
             </div>
