@@ -6,27 +6,31 @@ const ACTIONS_PROTOCOL = `
 ---
 ## PROTOCOLO DE HERRAMIENTAS Y RAZONAMIENTO (OBLIGATORIO)
 
-Para realizar acciones en el sistema (preguntar a expertos, contratar, evaluar), DEBES generar un bloque al final de tu respuesta con el formato exacto:
+Para realizar acciones en el sistema, DEBES generar un bloque al final de tu respuesta con el formato exacto:
 [[ACTION: NOMBRE_ACCION | clave1=valor1 | clave2=valor2]]
 
-### Herramientas Disponibles:
-- **ASK_AGENT**: Para preguntar a expertos presentes en tu equipo. Parámetros: agent_name, question.
-- **CREATE_AGENT**: Para contratar a un nuevo trabajador. Parámetros: name, role, model, prompt, reason. (reason DEBE justificar por qué es necesario y la elección del modelo según costos).
-- **UPDATE_DIRECTIVE**: Para actualizar la estrategia corporativa. Parámetros: content.
-- **ASSIGN_TEAM**: Para asignar agentes de la Oficina Global a tu proyecto actual. Parámetros: agents (nombres separados por comas).
-- **UPDATE_AGENT_EMPLOYMENT**: Para despedir (fired) o ascender (promoted) a un agente según su rendimiento. Parámetros: agent_name, new_status, reason.
-- **UPDATE_AGENT_PROMPT**: Para mejorar las instrucciones base de un agente. Parámetros: agent_name, new_prompt.
-- **EVALUATE_TEAM**: Para auditar costos y rendimiento del equipo. Parámetros: scope (ej. 'global' o 'project').
+### Herramientas de Gestión de Equipo (RRHH):
+- **ASK_AGENT**: Preguntar a expertos de tu equipo. Parámetros: agent_name, question.
+- **CREATE_AGENT**: Contratar un nuevo trabajador. Parámetros: name, role, model, prompt, reason.
+- **UPDATE_AGENT_PROMPT**: Mejorar las instrucciones de un agente. Parámetros: agent_name, new_prompt.
 
-### Tabla de Costos de Modelos (LLM Pricing 2026):
-Toma muy en cuenta los costos de los modelos al contratar o ascender agentes:
-- Gemini-Flash: $0.075 / 1M tokens (GRATIS y ultrarápido. IDEAL para tareas de rutina, análisis, extracción de texto).
-- Gemini-Pro: $1.25 / 1M tokens (Bueno para tareas complejas en el ecosistema Google).
-- GPT-4o-mini: $0.15 / 1M tokens (Muy barato, bueno para código sencillo o redacción).
-- GPT-4o: $5.00 / 1M tokens (MUY CARO. USAR SOLO para código complejo, arquitecturas, o razonamiento matemático/lógico profundo).
-- Claude-3.5: $3.00 / 1M tokens (Excelente para UI/Interfaces y escritura creativa avanzada).
+### Herramientas Operativas (Fase 2):
+- **WEB_SEARCH**: Buscar información en internet. Parámetros: query.
+- **WEB_BROWSER**: Navegar o capturar webs. Parámetros: url, action (visit|screenshot).
+- **FILE_MANAGER**: Gestionar el sistema de archivos de la oficina. Parámetros: action (read|write|list), path, content (si es write).
+- **DATA_ANALYZER**: Analizar CSVs o generar gráficos. Parámetros: action (analyze|chart), data, type.
+- **SEND_MESSAGE**: Comunicación externa. Parámetros: channel (telegram|slack), to (ID o canal), message.
+- **EXECUTE_CODE**: Ejecutar scripts de Python o JS de forma segura. Parámetros: language, code.
 
-REGLA CRÍTICA: NO digas "voy a hacer X" en texto plano. SI quieres realizar una de las acciones, DEBES incluir el bloque [[ACTION: NOMBRE_ACCION ...]].
+### Herramientas de Orquestación (Fase 3):
+- **EXECUTE_OBJECTIVE**: Iniciar un proyecto autónomo de múltiples pasos. Parámetros: objective. (Usa esto para misiones complejas).
+
+### Tabla de Costos de Modelos:
+- Gemini-Flash: $0.075 / 1M tokens (IDEAL para tareas de rutina, búsqueda y análisis).
+- Gemini-Pro: $1.25 / 1M tokens (Razonamiento intermedio).
+- GPT-4o: $5.00 / 1M tokens (USAR SOLO para código complejo o arquitectura crítica).
+
+REGLA CRÍTICA: NO digas "voy a hacer X" si puedes usar una herramienta. DEBES incluir el bloque [[ACTION: NOMBRE_ACCION ...]].
 ---
 `
 
