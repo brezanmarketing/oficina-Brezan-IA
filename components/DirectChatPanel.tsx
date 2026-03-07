@@ -390,10 +390,53 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
 
         } catch (err: any) {
             console.error('[CHAT ACTION] Error ejecutando acción:', err)
-            setMessages(prev => prev.map(m => m.id === msgId
-                ? { ...m, actionStatus: 'error', content: m.content + `\n\n⚠️ Error: ${err.message}` }
-                : m
-            ))
+
+            // 1. Mostrar el error visual como mensaje de sistema (no ensucia tanto el chat como meterlo en el mensaje original)
+            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, actionStatus: 'error' } : m))
+
+            const sysErrorId = `error-${Date.now()}`
+            setMessages(prev => [...prev, {
+                id: sysErrorId,
+                role: 'system',
+                content: `⚠️ Fallo Ejecución: ${err.message}`
+            }])
+
+            // 2. Hacer que Jarvis lea el error y responda al usuario automáticamente explicando cómo arreglarlo
+            setIsSending(true)
+            try {
+                const followupRes = await fetch('/api/agent/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agentId: agent.id,
+                        modelType: agent.model_type,
+                        systemPrompt: agent.system_prompt,
+                        messages: [
+                            ...messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
+                            {
+                                role: 'system',
+                                content: `CRÍTICO: La herramienta intentada ha fallado con este error interno: "${err.message}". 
+Tú eres J.A.R.V.I.S. Debes informarle de forma elegante y humana (sin parecer un log técnico) al CEO que no pudiste completar la acción. 
+Dile por qué falló y guíalo paso a paso para solucionarlo. Por ejemplo, si falta un token en un .env o una conexión API, dile que vaya a "Conexiones API" en el menú o que configure el .env. NO intentes ejecutar la herramienta de nuevo ahora.`
+                            }
+                        ]
+                    })
+                })
+
+                if (followupRes.ok) {
+                    const followupData = await followupRes.json()
+                    const followupRaw = followupData.result || ''
+                    const followupText = cleanTextForDisplay(followupRaw)
+
+                    setMessages(prev => [...prev, {
+                        id: `apology-${Date.now()}`,
+                        role: 'agent',
+                        content: followupText
+                    }])
+                }
+            } catch (recoveryErr) {
+                console.error("Fallo recuperando error", recoveryErr)
+            }
         } finally {
             await updateAgentStatus(agent.id, 'idle')
         }
