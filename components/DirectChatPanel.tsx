@@ -32,14 +32,22 @@ function parseActionsFromText(text: string): AgentAction[] {
     let match: RegExpExecArray | null
     while ((match = regex.exec(text)) !== null) {
         const command = match[1].trim()
-        const rawParams = match[2].split('|')
+        const rawParams = match[2] // string completo entre pipes
         const params: Record<string, string> = {}
-        for (const raw of rawParams) {
-            const eqIdx = raw.indexOf('=')
-            if (eqIdx > -1) {
-                params[raw.slice(0, eqIdx).trim()] = raw.slice(eqIdx + 1).trim()
-            }
+
+        // Dividir por pipes, pero con cuidado si hay pipes dentro del contenido. 
+        // Mejor estrategia: regex para capturar keys=values
+        const paramRegex = /([a-zA-Z0-9_]+)\s*=\s*([\s\S]*?)(?=(?:\|[a-zA-Z0-9_]+\s*=)|$)/g;
+        let pMatch: RegExpExecArray | null;
+
+        while ((pMatch = paramRegex.exec(rawParams)) !== null) {
+            let key = pMatch[1].trim();
+            let value = pMatch[2].trim();
+            // Remover pipes residuales al final del value si existieran por culpa del regex
+            if (value.endsWith('|')) value = value.slice(0, -1).trim()
+            params[key] = value;
         }
+
         actions.push({ command, params })
     }
     return actions
