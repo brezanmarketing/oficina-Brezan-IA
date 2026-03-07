@@ -21,9 +21,9 @@ Parámetros obligatorios: agent_name (nombre del compañero a consultar), questi
 Ejemplo: [[ACTION: ASK_AGENT | agent_name=Maia | question=¿Puedes revisar este análisis y darme tu opinión experta?]]
 IMPORTANTE: Cuando uses ASK_AGENT, el experto responderá, y TÚ serás re-ejecutado con su respuesta.
 
-**CHECK_CREDENTIAL** — Verificar si el usuario ha conectado su API Key en el Vault antes de usar una herramienta externa que lo exija (ej. Web Search, GitHub, Notion).
-Parámetros obligatorios: integration_id (el identificador de la API, ej: openai, serper, github, notion, etc)
-Ejemplo: [[ACTION: CHECK_CREDENTIAL | integration_id=serper]]
+**SEND_MESSAGE** — Comunicar información al CEO fuera de la plataforma.
+Parámetros obligatorios: channel (telegram|slack), to (ID o canal), message (texto del mensaje).
+Ejemplo: [[ACTION: SEND_MESSAGE | channel=telegram | to=123456 | message=Hola CEO]]
 
 ### Reglas de Uso:
 - Solo incluye un bloque [[ACTION: ...]] si la tarea lo requiere explícitamente.

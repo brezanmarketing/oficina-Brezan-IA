@@ -219,6 +219,7 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
     // ─── Ejecuto de Acciones desde el Chat ──────────────────────────────────
     const executeAction = async (msgId: string, actions: AgentAction[], isAutoFlow = false) => {
         if (!agent) return
+        setIsSending(true) // Mantener estado de pensamiento mientras se ejecuta
         setMessages(prev => prev.map(m => m.id === msgId ? { ...m, actionStatus: 'executing' } : m))
         await updateAgentStatus(agent.id, 'thinking')
 
@@ -415,9 +416,10 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
                             ...messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
                             {
                                 role: 'system',
-                                content: `CRÍTICO: La herramienta intentada ha fallado con este error interno: "${err.message}". 
-Tú eres J.A.R.V.I.S. Debes informarle de forma elegante y humana (sin parecer un log técnico) al CEO que no pudiste completar la acción. 
-Dile por qué falló y guíalo paso a paso para solucionarlo. Por ejemplo, si falta un token en un .env o una conexión API, dile que vaya a "Conexiones API" en el menú o que configure el .env. NO intentes ejecutar la herramienta de nuevo ahora.`
+                                content: `CRÍTICO: La herramienta intentada (${action.command}) ha fallado con este error: "${err.message}".
+Tú eres J.A.R.V.I.S. Informa al CEO con elegancia.
+INSTRUCCIÓN IMPORTANTE: Antes de pedir datos (como un ID de Telegram), REVISA los mensajes anteriores. Si el usuario ya te dio el ID, NO lo pidas de nuevo. En su lugar, explica que cometiste un error técnico y que lo reintentarás tras corregir tu lógica interna.
+Dile exactamante por qué falló la herramienta (si es comprensible) y si requiere acción del usuario (como configurar un token en "Conexiones API") o si es un error tuyo (como mandar un mensaje vacío).`
                             }
                         ]
                     })
@@ -439,6 +441,7 @@ Dile por qué falló y guíalo paso a paso para solucionarlo. Por ejemplo, si fa
             }
         } finally {
             await updateAgentStatus(agent.id, 'idle')
+            setIsSending(false)
         }
     }
 
