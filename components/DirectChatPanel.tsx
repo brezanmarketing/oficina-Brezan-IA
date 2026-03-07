@@ -430,13 +430,28 @@ Dile exactamante por qué falló la herramienta (si es comprensible) y si requie
                 if (followupRes.ok) {
                     const followupData = await followupRes.json()
                     const followupRaw = followupData.result || ''
+                    const followupActions = parseActionsFromText(followupRaw)
                     const followupText = cleanTextForDisplay(followupRaw)
+                    const followupId = `apology-${Date.now()}`
 
                     setMessages(prev => [...prev, {
-                        id: `apology-${Date.now()}`,
+                        id: followupId,
                         role: 'agent',
-                        content: followupText
+                        content: followupText,
+                        rawContent: followupRaw,
+                        actions: followupActions.length > 0 ? followupActions : undefined,
+                        actionStatus: followupActions.length > 0 ? 'pending' : undefined
                     }])
+
+                    if (agent && followupActions.length > 0) {
+                        const autoExecuteCommands = ['SEND_MESSAGE', 'WEB_SEARCH', 'FILE_MANAGER']
+                        const allSafe = followupActions.every(a => autoExecuteCommands.includes(a.command))
+                        if (agent.name === 'J.A.R.V.I.S.' && allSafe) {
+                            setTimeout(() => {
+                                executeAction(followupId, followupActions, true)
+                            }, 300)
+                        }
+                    }
                 }
             } catch (recoveryErr) {
                 console.error("Fallo recuperando error", recoveryErr)
