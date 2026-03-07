@@ -25,8 +25,9 @@ export async function POST(req: NextRequest) {
             return Response.json({ ok: true })
         }
 
-        // Procesar con Jarvis en background (no bloquear respuesta)
-        processJarvisMessage(text, chatId, username).catch(console.error)
+        // Vercel congela la función si retornamos antes de que acabe la promesa.
+        // Por tanto, debemos hacer await a processJarvisMessage.
+        await processJarvisMessage(text, chatId, username)
 
         return Response.json({ ok: true })
 
