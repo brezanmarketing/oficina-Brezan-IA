@@ -25,11 +25,8 @@ export async function POST(req: NextRequest) {
             return Response.json({ ok: true })
         }
 
-        // Obtener el origen (URL base) para que el fetch interno no falle en el server
-        const origin = req.nextUrl.origin;
-
         // Procesar con Jarvis en background (no bloquear respuesta)
-        processJarvisMessage(text, chatId, username, origin).catch(console.error)
+        processJarvisMessage(text, chatId, username).catch(console.error)
 
         return Response.json({ ok: true })
 
