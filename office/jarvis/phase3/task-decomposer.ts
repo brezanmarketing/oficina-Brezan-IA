@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getCredential } from '@/office/tools/credential-manager';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -27,7 +28,7 @@ export interface ProjectTemplate {
 }
 
 async function callGPT4oJson(systemPrompt: string, userPrompt: string): Promise<any> {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = await getCredential('openai', 'API Key');
     if (!apiKey) throw new Error('OPENAI_API_KEY no configurada');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

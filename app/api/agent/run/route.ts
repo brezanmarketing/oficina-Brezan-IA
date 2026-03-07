@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logTokenUsage } from '@/lib/usage'
+import { getCredential } from '@/office/tools/credential-manager'
 
 // ─── Protocolo de Acciones Autónomas ─────────────────────────────────────────
 // Este bloque se inyecta automáticamente al system_prompt de todos los agentes.
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
 
         // Routing Inteligente (OpenAI vs Gemini)
         if (modelType && modelType.includes('GPT')) {
-            const openAiApiKey = process.env.OPENAI_API_KEY
+            const openAiApiKey = await getCredential('openai', 'API Key')
             if (!openAiApiKey) {
                 return NextResponse.json({ error: 'No hay OPENAI_API_KEY configurada' }, { status: 500 })
             }
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
         }
 
         // --- Flujo Original Gemini ---
-        const apiKey = process.env.GEMINI_API_KEY
+        const apiKey = await getCredential('gemini', 'API Key')
         if (!apiKey) {
             return NextResponse.json({ error: 'No hay GEMINI API_KEY configurada' }, { status: 500 })
         }

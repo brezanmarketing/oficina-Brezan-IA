@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logTokenUsage } from '@/lib/usage'
+import { getCredential } from '@/office/tools/credential-manager'
 import { createClient } from '@/lib/supabase/server'
 
 const ACTIONS_PROTOCOL = `
@@ -59,7 +60,7 @@ ${ACTIONS_PROTOCOL}
 
         // Routing Inteligente (OpenAI vs Gemini)
         if (modelType && modelType.includes('GPT')) {
-            const openAiApiKey = process.env.OPENAI_API_KEY
+            const openAiApiKey = await getCredential('openai', 'API Key')
             if (!openAiApiKey) {
                 return NextResponse.json({ error: 'No hay OPENAI_API_KEY configurada' }, { status: 500 })
             }
@@ -114,7 +115,7 @@ ${ACTIONS_PROTOCOL}
         }
 
         // --- Flujo Original Gemini ---
-        const apiKey = process.env.GEMINI_API_KEY
+        const apiKey = await getCredential('gemini', 'API Key')
         if (!apiKey) {
             return NextResponse.json({ error: 'No hay GEMINI API_KEY configurada' }, { status: 500 })
         }

@@ -1,6 +1,7 @@
 import { apiCall } from '../api-gateway/index';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '../email-manager/index';
+import { getCredential } from '../credential-manager';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -21,7 +22,7 @@ export async function sendMessage(channel: Channel, to: string, text: string, op
 
     try {
         if (channel === 'telegram') {
-            const token = process.env.TELEGRAM_BOT_TOKEN;
+            const token = await getCredential('telegram', 'Bot Token');
             if (!token) throw new Error('TELEGRAM_BOT_TOKEN no configurado');
 
             const res = await apiCall({
@@ -121,7 +122,11 @@ export async function sendReport(title: string, content: string, charts?: string
 
 export async function listenForCommands(callback: (message: string, reply: (text: string) => Promise<void>) => void): Promise<void> {
     // Simple Telegram Polling implementation for listenForCommands
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    let token = '';
+    try {
+        token = await getCredential('telegram', 'Bot Token');
+    } catch { }
+
     if (!token) {
         console.warn("No token found for telegram listener");
         return;

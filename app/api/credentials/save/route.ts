@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { invalidateCache } from '@/office/tools/credential-manager'
 
 export async function POST(req: NextRequest) {
     try {
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        invalidateCache(integration_id);
         return NextResponse.json({ success: true })
 
     } catch (err: any) {
