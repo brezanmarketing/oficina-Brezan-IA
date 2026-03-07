@@ -64,6 +64,21 @@ function describeAction(action: AgentAction): string {
     if (action.command === 'ASSIGN_TEAM') {
         return `Asignar al equipo: **${action.params.agents}**`
     }
+    if (action.command === 'WEB_SEARCH') {
+        return `Buscar en internet: **"${action.params.query}"**`
+    }
+    if (action.command === 'WEB_BROWSER') {
+        return `Visitar URL: **${action.params.url}**`
+    }
+    if (action.command === 'FILE_MANAGER') {
+        return `Archivo (${action.params.action}): **${action.params.path}**`
+    }
+    if (action.command === 'SEND_MESSAGE') {
+        return `Enviar mensaje por **${action.params.channel}** a **${action.params.to}**`
+    }
+    if (action.command === 'EXECUTE_OBJECTIVE') {
+        return `Iniciar Proyecto Autónomo (Fase 3): **"${action.params.objective}"**`
+    }
     return `Ejecutar: ${action.command}`
 }
 
@@ -157,8 +172,9 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
             const detectedActions = parseActionsFromText(rawResult)
             const visibleText = cleanTextForDisplay(rawResult)
 
+            const agentMsgId = Date.now().toString()
             const agentMsg: Message = {
-                id: Date.now().toString(),
+                id: agentMsgId,
                 role: 'agent',
                 content: visibleText,
                 rawContent: rawResult,
@@ -166,6 +182,18 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
                 actionStatus: detectedActions.length > 0 ? 'pending' : undefined
             }
             setMessages(prev => [...prev, agentMsg])
+
+            // Auto-ejecución de comandos seguros o de comunicación
+            if (agent && detectedActions.length > 0) {
+                const autoExecuteCommands = ['SEND_MESSAGE', 'WEB_SEARCH', 'FILE_MANAGER']
+                // Si el Agente es JARVIS y TODAS las acciones son seguras, ejecutamos solos
+                const allSafe = detectedActions.every(a => autoExecuteCommands.includes(a.command))
+                if (agent.name === 'J.A.R.V.I.S.' && allSafe) {
+                    setTimeout(() => {
+                        executeAction(agentMsgId, detectedActions, true)
+                    }, 300)
+                }
+            }
 
         } catch (error) {
             console.error('Error in chat:', error)
@@ -334,6 +362,27 @@ export function DirectChatPanel({ agent, isOpen, onClose, allAgents = [] }: Dire
                         value: content.trim()
                     })
                     if (error) throw error
+                } else {
+                    // Ejecutor genérico para Herramientas Operativas (Fase 2 y 3)
+                    const res = await fetch('/api/agent/run-tool', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            command: action.command,
+                            params: action.params
+                        })
+                    })
+
+                    const data = await res.json()
+                    if (!res.ok) throw new Error(data.error || 'Error al ejecutar herramienta')
+
+                    // Respondemos nosotros como sistema el resultado de la herramienta
+                    const toolResult = typeof data.result === 'object' ? JSON.stringify(data.result, null, 2) : data.result
+                    setMessages(prev => [...prev, {
+                        id: `tool-${Date.now()}`,
+                        role: 'system',
+                        content: `✅ Herramienta completada (${action.command}):\n\n${toolResult}`
+                    }])
                 }
             }
 
