@@ -15,7 +15,7 @@ import { OfficeMap } from '@/components/OfficeMap'
 import { SystemStatus } from '@/components/SystemStatus'
 import { MisionesActivas } from '@/components/MisionesActivas'
 import RecursosOficina from '@/components/RecursosOficina'
-import { Folder, Clock } from 'lucide-react'
+import { Folder, Clock, Calendar } from 'lucide-react'
 
 
 import { useAgents } from '@/hooks/useAgents'
@@ -31,6 +31,7 @@ import { ProjectTeamManager } from '@/components/ProjectTeamManager'
 import { useProject } from '@/context/ProjectContext'
 import JarvisConnections from './connections/page'
 import AutomatizacionesPage from './automatizaciones/page'
+import AgendaPage from './agenda/page'
 
 export default function HomePage() {
   const [activeSection, setActiveSection] = useState('dashboard')
@@ -97,6 +98,9 @@ export default function HomePage() {
                 {activeSection === 'resources' && (
                   <><Folder className="w-6 h-6 text-indigo-400" /> Recursos de la Oficina</>
                 )}
+                {activeSection === 'agenda' && (
+                  <><Calendar className="w-6 h-6 text-purple-400" /> Agenda Interactiva</>
+                )}
                 {activeSection === 'automations' && (
                   <><Clock className="w-6 h-6 text-emerald-400" /> Automatizaciones</>
                 )}
@@ -106,6 +110,7 @@ export default function HomePage() {
                 {activeSection === 'office' && 'Simulador de Oficina en vivo'}
                 {activeSection === 'settings' && 'Configuración del sistema'}
                 {activeSection === 'resources' && 'Repositorio de Documentos Estratégicos'}
+                {activeSection === 'agenda' && 'Calendario Múltiple de Ejecuciones, Proyectos y Google Calendar'}
                 {activeSection === 'automations' && 'Panel de control de Crons, Webhooks, Emails y Triggers Recreativos'}
 
               </p>
@@ -303,6 +308,13 @@ export default function HomePage() {
         {/* Resources Section */}
         {activeSection === 'resources' && (
           <RecursosOficina />
+        )}
+
+        {/* Agenda Section */}
+        {activeSection === 'agenda' && (
+          <div className="p-6 h-[calc(100vh-73px)] overflow-hidden">
+            <AgendaPage />
+          </div>
         )}
 
         {/* Settings Section */}

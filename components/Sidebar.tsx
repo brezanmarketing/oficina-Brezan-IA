@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import {
     LayoutDashboard, Activity, Settings, Bot,
-    Users, Zap, Building2, ChevronRight, Folder, Clock
+    Users, Zap, Building2, ChevronRight, Folder, Clock, Calendar
 } from 'lucide-react'
 
 
@@ -18,6 +18,7 @@ const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'office', label: 'Oficina', icon: Activity },
     { id: 'resources', label: 'Recursos', icon: Folder },
+    { id: 'agenda', label: 'Agenda', icon: Calendar },
     { id: 'automations', label: 'Automatizaciones', icon: Clock },
     { id: 'connections', label: 'Conexiones API', icon: Zap },
     { id: 'settings', label: 'Configuración', icon: Settings },

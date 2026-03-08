@@ -1,4 +1,5 @@
 import { processCronTask } from '@/office/jarvis/phase5/cron-engine';
+import { runFullSync } from '@/office/jarvis/calendar-sync';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
