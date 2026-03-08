@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Globe, Mail, Activity, Play, Pause, Plus, List, Trash2 } from 'lucide-react';
+import { Clock, Globe, Mail, Activity, Play, Pause, Plus, List, Trash2, Zap, RefreshCw, Calendar, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function AutomatizacionesPage() {
@@ -157,23 +157,67 @@ function CronTab() {
     };
 
     const syncCalendar = async () => {
+        setLoading(true);
         try {
-            await fetch('/api/cron/sync');
+            const res = await fetch('/api/cron/sync');
+            const data = await res.json();
+            if (data.success) {
+                alert('Agenda sincronizada con éxito');
+            } else {
+                alert('Error sincronizando: ' + (data.error || 'Desconocido'));
+            }
         } catch (e) {
             console.error('Error syncing calendar:', e);
+            alert('Fallo de red al sincronizar');
         }
+        setLoading(false);
+    };
+
+    const handleRunTest = async (cron: any) => {
+        if (!confirm(`¿Quieres ejecutar "${cron.name}" ahora mismo?`)) return;
+        setLoading(true);
+        try {
+            const res = await fetch('/api/cron/run-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: cron.id, name: cron.name })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert(`✅ Éxito: ${data.message}\nResultado: ${JSON.stringify(data.result?.summary || data.result?.result?.summary || 'Ejecutado')}`);
+                await fetchCrons();
+            } else {
+                alert(`❌ Error: ${data.error}`);
+            }
+        } catch (e) {
+            alert('Error de conexión al ejecutar test');
+        }
+        setLoading(false);
     };
 
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-white/90">Gestión de Tareas Programadas</h3>
-                <button
-                    onClick={() => { setEditingCron(null); setIsEditModalOpen(true); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 rounded-xl text-sm transition-all"
-                >
-                    <Plus className="w-4 h-4" /> Nuevo Cron
-                </button>
+                <div>
+                    <h3 className="text-lg font-semibold text-white/90">Gestión de Tareas Programadas</h3>
+                    <p className="text-xs text-slate-500">Jarvis ejecuta estas tareas automáticamente según el cron configurado.</p>
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={syncCalendar}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10 rounded-xl text-xs transition-all disabled:opacity-50"
+                    >
+                        <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Sincronizar Agenda
+                    </button>
+                    <button
+                        onClick={() => { setEditingCron(null); setIsEditModalOpen(true); }}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all"
+                    >
+                        <Plus className="w-4 h-4" /> Nuevo Cron
+                    </button>
+                </div>
             </div>
 
             {crons.map(cron => (
@@ -192,33 +236,51 @@ function CronTab() {
                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${cron.is_active ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-500'}`}>
                                 {cron.is_active ? 'Activo' : 'Pausado'}
                             </span>
-                            <button onClick={() => toggleStatus(cron.id, cron.is_active)} title={cron.is_active ? "Pausar" : "Activar"} className="p-2 text-slate-400 hover:text-white transition-colors">
-                                {cron.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                            </button>
-                            <button
-                                onClick={() => { setEditingCron(cron); setIsEditModalOpen(true); }}
-                                className="p-2 text-slate-400 hover:text-indigo-400 transition-colors"
-                            >
-                                <List className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => handleDelete(cron.id)}
-                                className="p-2 text-slate-400 hover:text-red-400 transition-colors"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+
+                            {/* Botones de acción */}
+                            <div className="flex items-center bg-black/20 rounded-lg p-1 ml-2">
+                                <button onClick={() => toggleStatus(cron.id, cron.is_active)} title={cron.is_active ? "Pausar" : "Activar"} className="p-2 text-slate-400 hover:text-white transition-colors">
+                                    {cron.is_active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                                </button>
+                                <button onClick={() => handleRunTest(cron)} title="Ejecutar ahora (Test)" className="p-2 text-slate-400 hover:text-yellow-400 transition-colors">
+                                    <Zap className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => { setEditingCron(cron); setIsEditModalOpen(true); }}
+                                    title="Editar"
+                                    className="p-2 text-slate-400 hover:text-indigo-400 transition-colors"
+                                >
+                                    <List className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(cron.id)}
+                                    title="Eliminar"
+                                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="bg-slate-950 rounded-lg p-3 text-sm text-slate-300 border border-white/5 mb-4">
-                        <span className="text-indigo-400 font-semibold mr-2">Objetivo:</span>
+                    <div className="bg-slate-950 rounded-lg p-3 text-sm text-slate-300 border border-white/5 mb-4 font-light">
+                        <span className="text-indigo-400 font-semibold mr-2 border-r border-white/10 pr-2">JARVIS OBJECTIVE</span>
                         {cron.objective}
                     </div>
 
-                    <div className="flex gap-4 text-[10px] text-slate-500 font-mono">
-                        <span>ÚLTIMA EJECUCIÓN: {cron.last_run_at ? new Date(cron.last_run_at).toLocaleString() : 'NUNCA'}</span>
-                        <span>COUNT: {cron.run_count}</span>
-                        <span>FAIL: <span className={cron.fail_count > 0 ? "text-red-400" : ""}>{cron.fail_count}</span></span>
+                    <div className="flex gap-6 text-[10px] text-slate-500 font-mono">
+                        <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3" />
+                            ÚLTIMA EJECUCIÓN: {cron.last_run_at ? new Date(cron.last_run_at).toLocaleString() : 'NUNCA'}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <RefreshCw className="w-3 h-3" />
+                            COUNT: {cron.run_count}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <AlertCircle className="w-3 h-3" />
+                            FAIL: <span className={cron.fail_count > 0 ? "text-red-400" : ""}>{cron.fail_count}</span>
+                        </div>
                     </div>
                 </div>
             ))}

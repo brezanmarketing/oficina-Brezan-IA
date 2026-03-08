@@ -21,9 +21,9 @@ export default function AgendaPage() {
 
     const fetchEvents = async () => {
         setLoading(true);
-        // Primero forzar un resync manual para pruebas (en prod lo hará el cron)
+        // Primero intentar resync manual para asegurar que los crons aparecen
         try {
-            await fetch('/api/cron/cleanup');
+            await fetch('/api/cron/sync');
         } catch (e) { }
 
         const { data, error } = await supabase

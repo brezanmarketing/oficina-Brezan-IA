@@ -7,40 +7,53 @@ const getSupabase = () => createClient(
 );
 
 export async function syncCronJobsToCalendar() {
-    console.log('[Calendar Sync] Sincronizando Crons programados...');
+    console.log('[Calendar Sync] Iniciando sincronización de Crons...');
     const supabase = getSupabase();
 
     // 1. Obtener Crons Activos
-    const { data: triggers } = await supabase
+    const { data: triggers, error: trigErr } = await supabase
         .from('scheduled_triggers')
         .select('*')
         .eq('is_active', true)
         .not('cron_expr', 'is', null);
 
-    if (!triggers || triggers.length === 0) return;
+    if (trigErr) {
+        console.error('[Calendar Sync] Error obteniendo triggers:', trigErr);
+        return;
+    }
+
+    if (!triggers || triggers.length === 0) {
+        console.log('[Calendar Sync] No se encontraron crons activos.');
+        return;
+    }
+
+    console.log(`[Calendar Sync] Procesando ${triggers.length} crons activos...`);
 
     // 2. Borrar eventos futuros proyectados previamente por Jarvis (para no duplicar)
-    await supabase.from('calendar_events')
+    const { error: delErr } = await supabase.from('calendar_events')
         .delete()
         .eq('type', 'cron')
         .eq('source', 'jarvis')
         .gte('start_at', new Date().toISOString());
+
+    if (delErr) console.error('[Calendar Sync] Error en delete previo:', delErr);
 
     const newEvents = [];
 
     // 3. Proyectar las próximas 30 ejecuciones para cada cron
     for (const trigger of triggers) {
         try {
+            console.log(`[Calendar Sync] Parseando cron: ${trigger.name} (${trigger.cron_expr})`);
             const interval = cronParser.parseExpression(trigger.cron_expr);
 
             // Determinar color por nombre/tipo
             let color = '#3b82f6'; // default blue
             const name = trigger.name.toLowerCase();
-            if (name.includes('health') || name.includes('check') || name.includes('limpieza')) {
+            if (name.includes('health') || name.includes('check') || name.includes('limpieza') || name.includes('audit')) {
                 color = '#10b981'; // green (maintenance/health)
-            } else if (name.includes('informe') || name.includes('briefing') || name.includes('report')) {
+            } else if (name.includes('informe') || name.includes('briefing') || name.includes('report') || name.includes('dirario')) {
                 color = '#f59e0b'; // amber (intelligence)
-            } else if (name.includes('coste') || name.includes('auditoria') || name.includes('audit')) {
+            } else if (name.includes('coste')) {
                 color = '#ef4444'; // red (control/money)
             }
 
@@ -48,11 +61,11 @@ export async function syncCronJobsToCalendar() {
                 const nextDate = interval.next().toDate();
                 newEvents.push({
                     title: `🤖 Jarvis: ${trigger.name}`,
-                    description: `Objetivo: ${trigger.objective}\n\nEste proceso se ejecuta automáticamente bajo el cron: ${trigger.cron_expr}`,
+                    description: `Objetivo: ${trigger.objective}\n\nCron: ${trigger.cron_expr}`,
                     type: 'cron',
                     color: color,
                     start_at: nextDate.toISOString(),
-                    end_at: new Date(nextDate.getTime() + 15 * 60000).toISOString(), // 15 mins visuales
+                    end_at: new Date(nextDate.getTime() + 15 * 60000).toISOString(),
                     all_day: false,
                     recurring: true,
                     cron_expr: trigger.cron_expr,
@@ -67,7 +80,12 @@ export async function syncCronJobsToCalendar() {
     }
 
     if (newEvents.length > 0) {
-        await supabase.from('calendar_events').insert(newEvents);
+        console.log(`[Calendar Sync] Insertando ${newEvents.length} eventos en el calendario...`);
+        const { error: insErr } = await supabase.from('calendar_events').insert(newEvents);
+        if (insErr) console.error('[Calendar Sync] Error en insert final:', insErr);
+        else console.log('[Calendar Sync] Sincronización exitosa.');
+    } else {
+        console.log('[Calendar Sync] No se generaron nuevos eventos.');
     }
 }
 
