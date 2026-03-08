@@ -157,6 +157,28 @@ export default function JarvisConnections() {
         setSelected(null);
     };
 
+    // Fetch existing connections on mount
+    useEffect(() => {
+        async function fetchStatuses() {
+            try {
+                const res = await fetch('/api/credentials/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.connected_ids && Array.isArray(data.connected_ids)) {
+                        const newStatuses = { ...Object.fromEntries(INTEGRATIONS.map(i => [i.id, "disconnected"])) };
+                        data.connected_ids.forEach((id: string) => {
+                            newStatuses[id] = "connected";
+                        });
+                        setStatuses(newStatuses);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching connection statuses:', error);
+            }
+        }
+        fetchStatuses();
+    }, []);
+
     // Scroll log to top on new message
     useEffect(() => {
         if (logRef.current) logRef.current.scrollTop = 0;
