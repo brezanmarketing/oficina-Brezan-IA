@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-const cronParser = require('cron-parser');
+import cronParser from 'cron-parser';
+// @ts-ignore
+const parseCron = cronParser.parseExpression || (cronParser as any).default?.parseExpression || (cronParser as any).parse;
 
 const getSupabase = () => createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,7 +9,7 @@ const getSupabase = () => createClient(
 );
 
 export async function syncCronJobsToCalendar() {
-    console.log('[Calendar Sync] Iniciando sincronización de Crons...');
+    console.log('[Calendar Sync] Iniciando sincronización de Crons con cron-parser...');
     const supabase = getSupabase();
 
     // 1. Obtener Crons Activos
@@ -30,11 +32,13 @@ export async function syncCronJobsToCalendar() {
     console.log(`[Calendar Sync] Procesando ${triggers.length} crons activos...`);
 
     // 2. Borrar eventos futuros proyectados previamente por Jarvis (para no duplicar)
+    // NOTA: Solo borramos eventos de tipo 'cron' y fuente 'jarvis' a futuro.
+    const nowIso = new Date().toISOString();
     const { error: delErr } = await supabase.from('calendar_events')
         .delete()
         .eq('type', 'cron')
         .eq('source', 'jarvis')
-        .gte('start_at', new Date().toISOString());
+        .gt('start_at', nowIso);
 
     if (delErr) console.error('[Calendar Sync] Error en delete previo:', delErr);
 
@@ -43,8 +47,15 @@ export async function syncCronJobsToCalendar() {
     // 3. Proyectar las próximas 30 ejecuciones para cada cron
     for (const trigger of triggers) {
         try {
-            console.log(`[Calendar Sync] Parseando cron: ${trigger.name} (${trigger.cron_expr})`);
-            const interval = cronParser.parseExpression(trigger.cron_expr);
+            console.log(`[Calendar Sync] Parseando cron: "${trigger.name}" expresión: "${trigger.cron_expr}"`);
+
+            // Validar que la expresión no esté vacía
+            if (!trigger.cron_expr || trigger.cron_expr.trim() === '') {
+                console.warn(`[Calendar Sync] Salteando ${trigger.name}: Expresión vacía.`);
+                continue;
+            }
+
+            const interval = parseCron(trigger.cron_expr);
 
             // Determinar color por nombre/tipo
             let color = '#3b82f6'; // default blue
@@ -65,7 +76,7 @@ export async function syncCronJobsToCalendar() {
                     type: 'cron',
                     color: color,
                     start_at: nextDate.toISOString(),
-                    end_at: new Date(nextDate.getTime() + 15 * 60000).toISOString(),
+                    end_at: new Date(nextDate.getTime() + 15 * 60000).toISOString(), // Duración nominal 15 min
                     all_day: false,
                     recurring: true,
                     cron_expr: trigger.cron_expr,
@@ -75,17 +86,21 @@ export async function syncCronJobsToCalendar() {
                 });
             }
         } catch (err: any) {
-            console.error(`[Calendar Sync] Falla parseando cron ${trigger.name}:`, err.message);
+            console.error(`[Calendar Sync] Falla parseando cron "${trigger.name}" (${trigger.cron_expr}):`, err.message);
         }
     }
 
     if (newEvents.length > 0) {
-        console.log(`[Calendar Sync] Insertando ${newEvents.length} eventos en el calendario...`);
-        const { error: insErr } = await supabase.from('calendar_events').insert(newEvents);
-        if (insErr) console.error('[Calendar Sync] Error en insert final:', insErr);
-        else console.log('[Calendar Sync] Sincronización exitosa.');
+        console.log(`[Calendar Sync] Intentando insertar ${newEvents.length} eventos en el calendario...`);
+        const { data, error: insErr } = await supabase.from('calendar_events').insert(newEvents).select();
+
+        if (insErr) {
+            console.error('[Calendar Sync] Error FATAL en insert final:', JSON.stringify(insErr));
+        } else {
+            console.log(`[Calendar Sync] Sincronización exitosa. Insertados ${data?.length} eventos.`);
+        }
     } else {
-        console.log('[Calendar Sync] No se generaron nuevos eventos.');
+        console.log('[Calendar Sync] No se generaron nuevos eventos para insertar.');
     }
 }
 
@@ -101,10 +116,11 @@ export async function syncProjectsToCalendar() {
     if (!projects) return;
 
     // Borrar deadlines existentes para actualizar
+    const nowIso = new Date().toISOString();
     await supabase.from('calendar_events')
         .delete()
         .eq('type', 'project_deadline')
-        .gte('start_at', new Date().toISOString());
+        .gt('start_at', nowIso);
 
     const newEvents = [];
 
@@ -120,7 +136,7 @@ export async function syncProjectsToCalendar() {
 
         if (deadline) {
             newEvents.push({
-                title: `[Deadline] ${project.title}`,
+                title: `[Deadline] ${project.name}`, // Corregido project.title -> project.name
                 description: `Progreso: ${project.progress_pct || 0}%${isEstimated ? ' (Fecha estimada)' : ''}`,
                 type: 'project_deadline',
                 color: '#f97316', // orange-500
@@ -139,12 +155,11 @@ export async function syncProjectsToCalendar() {
 }
 
 export async function syncTasksToCalendar() {
-    console.log('[Calendar Sync] Sincronizando Tareas...');
-    // Simulación de tareas asignadas para completitud del framework Fase 5
-    // Esto dependería de si se ha migrado `project_tasks` con una fecha estimada de completado.
+    // Implementación futura si se requiere
 }
 
 export async function runFullSync() {
+    console.log('[Calendar Sync] Iniciando RUN_FULL_SYNC...');
     await syncCronJobsToCalendar();
     await syncProjectsToCalendar();
     await syncTasksToCalendar();

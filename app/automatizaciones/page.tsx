@@ -237,27 +237,38 @@ function CronTab() {
                                 {cron.is_active ? 'Activo' : 'Pausado'}
                             </span>
 
-                            {/* Botones de acción */}
-                            <div className="flex items-center bg-black/20 rounded-lg p-1 ml-2">
-                                <button onClick={() => toggleStatus(cron.id, cron.is_active)} title={cron.is_active ? "Pausar" : "Activar"} className="p-2 text-slate-400 hover:text-white transition-colors">
-                                    {cron.is_active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                            {/* Botones de acción mejorados con etiquetas claras */}
+                            <div className="flex items-center gap-2 ml-2">
+                                <button
+                                    onClick={() => handleRunTest(cron)}
+                                    disabled={loading}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 rounded-lg text-[10px] font-bold transition-all disabled:opacity-50"
+                                >
+                                    <Zap className="w-3.5 h-3.5" /> EJECUTAR AHORA
                                 </button>
-                                <button onClick={() => handleRunTest(cron)} title="Ejecutar ahora (Test)" className="p-2 text-slate-400 hover:text-yellow-400 transition-colors">
-                                    <Zap className="w-3.5 h-3.5" />
-                                </button>
+
                                 <button
                                     onClick={() => { setEditingCron(cron); setIsEditModalOpen(true); }}
-                                    title="Editar"
-                                    className="p-2 text-slate-400 hover:text-indigo-400 transition-colors"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg text-[10px] font-bold transition-all"
                                 >
-                                    <List className="w-3.5 h-3.5" />
+                                    <List className="w-3.5 h-3.5" /> EDITAR
                                 </button>
+
                                 <button
                                     onClick={() => handleDelete(cron.id)}
-                                    title="Eliminar"
-                                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-bold transition-all"
                                 >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-3.5 h-3.5" /> BORRAR
+                                </button>
+
+                                <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+                                <button
+                                    onClick={() => toggleStatus(cron.id, cron.is_active)}
+                                    title={cron.is_active ? "Pausar" : "Activar"}
+                                    className={`p-2 rounded-lg transition-colors ${cron.is_active ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-green-500 hover:bg-green-500/10'}`}
+                                >
+                                    {cron.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                                 </button>
                             </div>
                         </div>
