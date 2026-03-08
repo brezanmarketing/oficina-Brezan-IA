@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig: any = {
   serverExternalPackages: ["vm2", "playwright", "playwright-core"],
   eslint: {
     ignoreDuringBuilds: true,

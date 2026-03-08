@@ -1,18 +1,16 @@
 import { processIncomingEmails } from '@/office/jarvis/phase5/email-trigger';
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server'
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(req: Request) {
-    const auth = req.headers.get('authorization');
+export async function GET(req: NextRequest) {
+    const auth = req.headers.get('authorization')
     if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     try {
         const result = await processIncomingEmails();
-        return NextResponse.json(result);
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return Response.json({ ok: true, result })
+    } catch (error) {
+        return Response.json({ ok: false, error }, { status: 500 })
     }
 }
