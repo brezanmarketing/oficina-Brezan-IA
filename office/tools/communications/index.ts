@@ -42,8 +42,8 @@ export async function sendMessage(channel: Channel, to: string, text: string, op
             if (!res.success) throw new Error(res.error || 'Fallo API Telegram');
         }
         else if (channel === 'slack') {
-            const token = process.env.SLACK_BOT_TOKEN;
-            if (!token) throw new Error('SLACK_BOT_TOKEN no configurado');
+            const token = await getCredential('slack', 'Bot Token');
+            if (!token) throw new Error('SLACK_BOT_TOKEN no configurado en el panel de Conexiones');
 
             const res = await apiCall({
                 url: 'https://slack.com/api/chat.postMessage',

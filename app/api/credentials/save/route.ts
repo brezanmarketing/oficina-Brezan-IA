@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { invalidateCache } from '@/office/tools/credential-manager'
+import { runFullSync } from '@/office/jarvis/calendar-sync'
 
 export async function POST(req: NextRequest) {
     try {
@@ -68,8 +69,10 @@ export async function POST(req: NextRequest) {
         console.log(`SAVE_API: Guardado exitoso para ${integration_id}`);
         try {
             invalidateCache(integration_id);
+            // Sincronizar calendario inmediatamente
+            await runFullSync();
         } catch (e) {
-            console.warn('SAVE_API: No se pudo invalidar cache (no crítico):', e);
+            console.warn('SAVE_API: Error en tareas post-guardado (no crítico):', e);
         }
 
         return NextResponse.json({ success: true })

@@ -22,12 +22,12 @@ export interface Email {
 }
 
 async function getGmailAccessToken(): Promise<string> {
-    const clientId = process.env.GMAIL_CLIENT_ID;
-    const clientSecret = process.env.GMAIL_CLIENT_SECRET;
-    const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+    const clientId = await getCredential('gmail', 'Client ID');
+    const clientSecret = await getCredential('gmail', 'Client Secret');
+    const refreshToken = await getCredential('gmail', 'Refresh Token');
 
     if (!clientId || !clientSecret || !refreshToken) {
-        throw new Error('Faltan credenciales de Gmail en las variables de entorno.');
+        throw new Error('Faltan credenciales de Gmail en el Vault de Jarvis (Connections Panel).');
     }
 
     const response = await fetch('https://oauth2.googleapis.com/token', {

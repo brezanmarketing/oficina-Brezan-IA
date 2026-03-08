@@ -32,21 +32,33 @@ export async function syncCronJobsToCalendar() {
     for (const trigger of triggers) {
         try {
             const interval = cronParser.parseExpression(trigger.cron_expr);
+
+            // Determinar color por nombre/tipo
+            let color = '#3b82f6'; // default blue
+            const name = trigger.name.toLowerCase();
+            if (name.includes('health') || name.includes('check') || name.includes('limpieza')) {
+                color = '#10b981'; // green (maintenance/health)
+            } else if (name.includes('informe') || name.includes('briefing') || name.includes('report')) {
+                color = '#f59e0b'; // amber (intelligence)
+            } else if (name.includes('coste') || name.includes('auditoria') || name.includes('audit')) {
+                color = '#ef4444'; // red (control/money)
+            }
+
             for (let i = 0; i < 30; i++) {
                 const nextDate = interval.next().toDate();
                 newEvents.push({
-                    title: `[Jarvis] ${trigger.name}`,
-                    description: `Objetivo: ${trigger.objective}\nEste es un evento programado automáticamente.`,
+                    title: `🤖 Jarvis: ${trigger.name}`,
+                    description: `Objetivo: ${trigger.objective}\n\nEste proceso se ejecuta automáticamente bajo el cron: ${trigger.cron_expr}`,
                     type: 'cron',
-                    color: '#3b82f6', // blue-500
+                    color: color,
                     start_at: nextDate.toISOString(),
-                    end_at: new Date(nextDate.getTime() + 5 * 60000).toISOString(), // 5 mins de duración visual
+                    end_at: new Date(nextDate.getTime() + 15 * 60000).toISOString(), // 15 mins visuales
                     all_day: false,
                     recurring: true,
                     cron_expr: trigger.cron_expr,
                     source: 'jarvis',
                     trigger_id: trigger.id,
-                    notify_before: 10
+                    notify_before: 5
                 });
             }
         } catch (err: any) {
