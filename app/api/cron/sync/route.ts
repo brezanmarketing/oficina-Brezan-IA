@@ -5,26 +5,24 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-    const auth = req.headers.get('authorization');
+    const isCronAction = req.headers.get('Authorization') === `Bearer ${process.env.CRON_SECRET}`;
     const isLocal = process.env.NODE_ENV === 'development';
 
-    // 1. Verificar si es una llamada del Cron (con Secret)
-    const isCronAction = auth === `Bearer ${process.env.CRON_SECRET}`;
-
-    // 2. Verificar si es una llamada del Frontend (con Sesión)
+    // 2. Verificar si es una llamada del Frontend (con Sesión usando ANON_KEY)
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!isLocal && !isCronAction && !user) {
+        console.error('[Sync API] No autorizado. Local:', isLocal, 'CronSecret:', isCronAction);
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userEmail = user?.email || 'Cron/Local';
     try {
-        console.log('[API Sync] Iniciando sincronización manual...');
         await runFullSync();
-        return NextResponse.json({ success: true, message: 'Calendario sincronizado correctamente' });
-    } catch (err: any) {
-        console.error('[API Sync] Error:', err.message);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ success: true, user: userEmail });
+    } catch (error: any) {
+        console.error('[Sync API] Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
