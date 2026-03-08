@@ -2,7 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import { getCredential } from '@/office/tools/credential-manager';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error('CONFIGURACIÓN CRÍTICA FALTANTE: SUPABASE_URL o SUPABASE_SERVICE_KEY no definidas en el servidor (Jarvis Decomposer)');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface TaskDefinition {

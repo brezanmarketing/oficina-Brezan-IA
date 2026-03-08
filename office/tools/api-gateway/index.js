@@ -4,7 +4,10 @@ exports.getCredential = getCredential;
 exports.apiCall = apiCall;
 const supabase_js_1 = require("@supabase/supabase-js");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error('CONFIGURACIÓN CRÍTICA FALTANTE: SUPABASE_URL o SUPABASE_SERVICE_KEY no definidas en el servidor (API Gateway)');
+}
 const supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
 // In-memory rate limiter per domain
 const domainRequests = {};
