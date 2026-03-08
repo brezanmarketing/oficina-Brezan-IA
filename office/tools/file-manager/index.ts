@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import * as path from 'path';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 const BUCKET_NAME = 'office-files';
 
@@ -58,6 +59,7 @@ function getMimeType(filename: string): string {
 }
 
 export async function readFile(filePath: string): Promise<Buffer | string> {
+    const supabase = getSupabase();
     const { data, error } = await supabase
         .storage
         .from(BUCKET_NAME)
@@ -80,6 +82,7 @@ export async function readFile(filePath: string): Promise<Buffer | string> {
 }
 
 export async function writeFile(filePath: string, content: Buffer | string, metadata?: any): Promise<FileRecord> {
+    const supabase = getSupabase();
     let fileBody: Buffer | string = content;
 
     // Subimos a Storage
@@ -113,7 +116,7 @@ export async function writeFile(filePath: string, content: Buffer | string, meta
         .from('files_registry')
         .upsert({
             ...record,
-            storage_url: `${supabaseUrl}/storage/v1/object/public/${BUCKET_NAME}/${filePath}`,
+            storage_url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${filePath}`,
             updated_at: new Date().toISOString()
         }, { onConflict: 'path' })
         .select()
@@ -135,6 +138,7 @@ export async function deleteFile(filePath: string): Promise<void> {
 }
 
 export async function moveFile(fromPath: string, toPath: string): Promise<FileRecord> {
+    const supabase = getSupabase();
     const { error: moveError } = await supabase
         .storage
         .from(BUCKET_NAME)
@@ -152,6 +156,7 @@ export async function moveFile(fromPath: string, toPath: string): Promise<FileRe
         .single();
 
     if (oldRecord) {
+        const supabase = getSupabase();
         await supabase.from('files_registry').delete().eq('path', fromPath);
 
         oldRecord.path = toPath;
@@ -172,6 +177,7 @@ export async function moveFile(fromPath: string, toPath: string): Promise<FileRe
 }
 
 export async function listFiles(prefixStr?: string, categoryStr?: string): Promise<FileRecord[]> {
+    const supabase = getSupabase();
     let query = supabase.from('files_registry').select('*');
 
     if (categoryStr) {
@@ -196,6 +202,7 @@ export async function listFiles(prefixStr?: string, categoryStr?: string): Promi
 }
 
 export async function getFileUrl(filePath: string, expiresIn: number = 3600): Promise<string> {
+    const supabase = getSupabase();
     const { data, error } = await supabase
         .storage
         .from(BUCKET_NAME)

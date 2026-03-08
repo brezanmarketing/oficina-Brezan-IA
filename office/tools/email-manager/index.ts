@@ -2,9 +2,10 @@ import { apiCall, getCredential } from '../api-gateway/index';
 import { createClient } from '@supabase/supabase-js';
 import { writeFile } from '../file-manager/index';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 export type EmailClass = 'urgente' | 'normal' | 'spam' | 'newsletter' | 'factura' | 'soporte';
 
@@ -212,6 +213,7 @@ function extractBody(payload: any): string {
 }
 
 async function logEmailToDb(email: Email, direction: 'inbound' | 'outbound', agentId: string) {
+    const supabase = getSupabase();
     try {
         await supabase.from('emails_log').insert({
             agent_id: agentId,

@@ -3,9 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import { writeFile } from '../file-manager/index';
 import { ToolResult } from '../index';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 export interface PageContent {
     title: string;
@@ -208,6 +209,7 @@ export async function scrapeStructured(url: string, schema: any, agentId: string
 }
 
 async function logInteraction(action: string, url: string, agentId: string, success: boolean, startTime: number, errorMsg?: string) {
+    const supabase = getSupabase();
     try {
         await supabase.from('tool_executions').insert({
             tool_name: 'web-browser',

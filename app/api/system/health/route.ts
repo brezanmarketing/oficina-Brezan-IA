@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { createClient } from '@/lib/supabase/server';
 import { getCredential } from '@/office/tools/credential-manager';
 
@@ -7,7 +8,7 @@ export async function GET() {
         debug: {
             has_encryption_secret: !!process.env.CREDENTIAL_ENCRYPTION_SECRET,
             encryption_secret_len: process.env.CREDENTIAL_ENCRYPTION_SECRET?.length || 0,
-            has_service_role: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+            has_service_key: !!process.env.SUPABASE_SERVICE_KEY,
             has_supabase_url: !!process.env.NEXT_PUBLIC_SUPABASE_URL
         }
     };

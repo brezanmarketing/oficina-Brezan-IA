@@ -3,13 +3,15 @@ import { sendMessage } from '../tools/communications/index';
 // Necesitamos un cliente supabase con service role o admin para el backend
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 // ─── Control de Estado Visual ────────────────────────────────────────────────
 async function updateAgentStatus(agentId: string, status: 'idle' | 'working' | 'thinking') {
     try {
+        const supabase = getSupabase();
         // 1. Actualizar estado real
         await supabase.from('agents').update({ status }).eq('id', agentId);
 
@@ -60,6 +62,7 @@ export async function processJarvisMessage(
     chatId: string,
     username: string
 ): Promise<void> {
+    const supabase = getSupabase();
     let agentId = 'system-telegram'; // Default fallback
     try {
         console.log('PROCESANDO MENSAJE:', userMessage)

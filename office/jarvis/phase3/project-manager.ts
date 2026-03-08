@@ -5,8 +5,8 @@ import { spawnAgent, retireAgent } from './agent-spawner';
 import { enqueueProject, getNextBatch, markComplete, markFailed } from './task-queue';
 import { Communications } from '../../tools'; // Orquestador de alertas
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function createProject(objective: string, options?: any): Promise<Project> {

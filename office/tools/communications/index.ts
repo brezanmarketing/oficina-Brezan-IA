@@ -3,9 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '../email-manager/index';
 import { getCredential } from '../credential-manager';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 export type Channel = 'telegram' | 'slack' | 'whatsapp' | 'discord';
 export type AlertLevel = 'info' | 'warning' | 'error' | 'critical';
@@ -189,6 +190,7 @@ async function logNotification(data: {
     status: string;
     metadata: any;
 }) {
+    const supabase = getSupabase();
     try {
         await supabase.from('notifications_log').insert(data);
     } catch (err) {

@@ -1,9 +1,10 @@
 import * as Tools from '../tools/index';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 import { securityLayer } from './phase4/security-layer';
 import { auditLogger } from './phase4/audit-logger';
@@ -222,6 +223,7 @@ export function selectTool(task_description: string): ToolRegistration[] {
 }
 
 export async function checkAllCredentials(): Promise<CredentialStatus[]> {
+    const supabase = getSupabase();
     const required = Array.from(new Set(Registry.flatMap(r => r.requires_credentials)));
     const statuses: CredentialStatus[] = [];
 

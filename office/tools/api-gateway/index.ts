@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { ToolResult } from '../index';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 export type AuthType = 'none' | 'api-key' | 'bearer' | 'basic' | 'oauth2';
 
@@ -58,6 +59,7 @@ export async function getCredential(integration_id: string, key_name: string): P
         throw new Error('Variables de entorno de encriptación no están configuradas.');
     }
 
+    const supabase = getSupabase();
     const { data, error } = await supabase.rpc('get_credential', {
         p_integration_id: integration_id,
         p_key_name: key_name,
@@ -217,6 +219,7 @@ export async function apiCall(config: ApiCallConfig): Promise<ToolResult> {
 }
 
 async function logToSupabase(result: ToolResult, config: ApiCallConfig, status: string, errorMsg?: string) {
+    const supabase = getSupabase();
     try {
         await supabase.from('tool_executions').insert({
             tool_name: result.tool_name,

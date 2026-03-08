@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+export const dynamic = 'force-dynamic';
 import { processJarvisMessage } from '@/office/jarvis/telegram-handler'
 
 export async function POST(req: NextRequest) {
