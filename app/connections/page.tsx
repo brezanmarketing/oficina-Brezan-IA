@@ -123,7 +123,8 @@ export default function JarvisConnections() {
             });
 
             if (!res.ok) {
-                throw new Error('Fallback saving failed')
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Error al guardar credenciales')
             }
 
             setStatuses(p => ({ ...p, [selected.id]: "connected" }));
@@ -136,12 +137,12 @@ export default function JarvisConnections() {
             }, ...p]);
             setTimeout(() => { setSaved(false); setSelected(null); setPulse(null); }, 1200);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
             setSaving(false);
             setJarvisLog(p => [{
                 type: "warn",
-                text: `Error al conectar ${selected.name}. Vault devolvió una excepción de guardado.`
+                text: `Error al conectar ${selected?.name || 'Integración'}: ${error.message || 'Error desconocido'}`
             }, ...p]);
         }
 
