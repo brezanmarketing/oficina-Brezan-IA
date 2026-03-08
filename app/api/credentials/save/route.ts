@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Secret key en entorno para cifrar
-        const pgpSecret = process.env.PGP_SECRET_KEY
+        const pgpSecret = process.env.CREDENTIAL_ENCRYPTION_SECRET || process.env.PGP_SECRET_KEY || process.env.ENCRYPTION_SECRET;
         if (!pgpSecret) {
-            console.error('CRITICAL: PGP_SECRET_KEY is not set in environment variables')
+            console.error('CRITICAL: No encryption secret found (tried CREDENTIAL_ENCRYPTION_SECRET, PGP_SECRET_KEY, ENCRYPTION_SECRET)')
             return NextResponse.json({ error: 'Error interno del servidor de cifrado' }, { status: 500 })
         }
 

@@ -10,7 +10,7 @@ function getSupabase() {
     return _supabase
 }
 
-const SECRET = process.env.CREDENTIAL_ENCRYPTION_SECRET || ''
+const SECRET = process.env.CREDENTIAL_ENCRYPTION_SECRET || process.env.PGP_SECRET_KEY || process.env.ENCRYPTION_SECRET || ''
 const cache = new Map<string, { value: string, expires: number }>()
 const TTL = 5 * 60 * 1000 // 5 minutes cache
 

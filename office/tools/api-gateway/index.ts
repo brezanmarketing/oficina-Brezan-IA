@@ -54,7 +54,7 @@ async function checkRateLimit(domain: string, maxPerMin: number) {
 }
 
 export async function getCredential(integration_id: string, key_name: string): Promise<string> {
-    const secret = process.env.PGP_SECRET_KEY || process.env.ENCRYPTION_SECRET || '';
+    const secret = process.env.CREDENTIAL_ENCRYPTION_SECRET || process.env.PGP_SECRET_KEY || process.env.ENCRYPTION_SECRET || '';
     if (!secret) {
         throw new Error('Variables de entorno de encriptación no están configuradas.');
     }
