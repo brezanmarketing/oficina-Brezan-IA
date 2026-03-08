@@ -1,26 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Activity, ShieldCheck, AlertCircle, Cpu, Wifi, Globe, MessageSquare, Database } from 'lucide-react'
-
-interface HealthStatus {
-    status: 'ok' | 'warn' | 'error' | 'check'
-    latency?: number
-    message?: string
-}
-
-interface HealthData {
-    openai: HealthStatus
-    google: HealthStatus
-    telegram: HealthStatus
-    supabase: HealthStatus
-    vercel: HealthStatus
-    serper: HealthStatus
-}
+import { Activity, ShieldCheck, Cpu, Wifi, Globe, MessageSquare, Database } from 'lucide-react'
 
 export function SystemStatus() {
-    const [health, setHealth] = useState<HealthData | null>(null)
+    const [health, setHealth] = useState<Record<string, boolean> | null>(null)
     const [loading, setLoading] = useState(true)
 
     const fetchHealth = async () => {
@@ -55,12 +39,12 @@ export function SystemStatus() {
     }
 
     const services = [
-        { id: 'openai', label: 'OpenAI', icon: Cpu, data: health?.openai },
-        { id: 'google', label: 'Gemini', icon: Globe, data: health?.google },
-        { id: 'telegram', label: 'Telegram', icon: MessageSquare, data: health?.telegram },
-        { id: 'supabase', label: 'Supabase', icon: Database, data: health?.supabase },
-        { id: 'vercel', label: 'Vercel', icon: Wifi, data: health?.vercel },
-        { id: 'serper', label: 'Serper', icon: ShieldCheck, data: health?.serper },
+        { id: 'openai', label: 'OpenAI', icon: Cpu, ok: !!health?.openai },
+        { id: 'google', label: 'Gemini', icon: Globe, ok: !!health?.google },
+        { id: 'telegram', label: 'Telegram', icon: MessageSquare, ok: !!health?.telegram },
+        { id: 'supabase', label: 'Supabase', icon: Database, ok: !!health?.supabase },
+        { id: 'vercel', label: 'Vercel', icon: Wifi, ok: !!health?.vercel },
+        { id: 'serper', label: 'Serper', icon: ShieldCheck, ok: !!health?.serper },
     ]
 
     return (
@@ -77,9 +61,7 @@ export function SystemStatus() {
                             key={service.id}
                             label={service.label}
                             icon={service.icon}
-                            status={service.data?.status || 'check'}
-                            latency={service.data?.latency}
-                            message={service.data?.message}
+                            ok={service.ok}
                         />
                     ))}
                 </div>
@@ -98,25 +80,21 @@ export function SystemStatus() {
     )
 }
 
-function ServiceIndicator({ label, icon: Icon, status, latency, message }: {
+function ServiceIndicator({ label, icon: Icon, ok }: {
     label: string,
     icon: any,
-    status: 'ok' | 'warn' | 'error' | 'check',
-    latency?: number,
-    message?: string
+    ok: boolean
 }) {
+    const status = ok ? 'ok' : 'error'
+
     const statusColors = {
         ok: 'text-green-400 bg-green-400/10 border-green-400/20',
-        warn: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-        error: 'text-red-400 bg-red-400/10 border-red-400/20',
-        check: 'text-slate-500 bg-slate-500/10 border-slate-500/20'
+        error: 'text-red-400 bg-red-400/10 border-red-400/20'
     }
 
     const dotColors = {
         ok: 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.4)]',
-        warn: 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]',
-        error: 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.4)]',
-        check: 'bg-slate-500'
+        error: 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.4)]'
     }
 
     return (
@@ -129,23 +107,18 @@ function ServiceIndicator({ label, icon: Icon, status, latency, message }: {
                 <div className="flex items-center gap-1.5">
                     <div className={`w-1 h-1 rounded-full ${dotColors[status]}`} />
                     <span className="text-[9px] font-mono text-slate-500 uppercase">
-                        {status === 'ok' ? (latency ? `${latency}ms` : 'Online') : status === 'warn' ? 'Config' : status === 'error' ? 'Error' : '...'}
+                        {status === 'ok' ? 'Online' : 'Error'}
                     </span>
                 </div>
             </div>
 
-            {/* Tooltip simple */}
             <div className="absolute top-full left-0 mt-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                 <div className="text-[10px] font-bold text-white mb-1 uppercase tracking-wider">{label} API Status</div>
                 <div className={`text-[9px] leading-relaxed ${status === 'error' ? 'text-red-300' : 'text-slate-400'}`}>
-                    {message || (status === 'ok' ? 'Servicio funcionando correctamente dentro de los parámetros esperados.' : 'Verificando estado...')}
+                    {status === 'ok' ? 'Servicio operativo y autenticado.' : 'Fallo de conexión o credencial inválida.'}
                 </div>
-                {latency && status === 'ok' && (
-                    <div className="mt-2 text-[8px] font-mono text-indigo-400">
-                        LATENCY: {latency}ms
-                    </div>
-                )}
             </div>
         </div>
     )
 }
+
