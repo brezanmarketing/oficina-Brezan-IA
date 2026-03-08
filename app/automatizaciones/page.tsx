@@ -177,7 +177,7 @@ function CronTab() {
         if (!confirm(`¿Quieres ejecutar "${cron.name}" ahora mismo?`)) return;
         setLoading(true);
         try {
-            const res = await fetch('/api/cron/run-test', {
+            const res = await fetch('/api/cron/run-manual', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: cron.id, name: cron.name })
