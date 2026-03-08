@@ -82,21 +82,26 @@ export default function JarvisConnections() {
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<any>(null);
     const [onlyConn, setOnlyConn] = useState(false);
-    const [statuses, setStatuses] = useState(Object.fromEntries(INTEGRATIONS.map(i => [i.id, i.status])));
+
+    // Status can be: disconnected, unverified, connected, error
+    const [statuses, setStatuses] = useState<Record<string, string>>(Object.fromEntries(INTEGRATIONS.map(i => [i.id, "disconnected"])));
+    const [meta, setMeta] = useState<Record<string, any>>({});
+
     const [formVals, setFormVals] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
+    const [verifying, setVerifying] = useState(false);
     const [saved, setSaved] = useState(false);
     const [jarvisLog, setJarvisLog] = useState(JARVIS_MESSAGES);
     const [logVisible, setLogVisible] = useState(true);
     const [pulse, setPulse] = useState<string | null>(null);
     const logRef = useRef<HTMLDivElement>(null);
 
-    const connected = Object.keys(statuses).filter(id => statuses[id] === "connected");
+    const connected = Object.keys(statuses).filter(id => statuses[id] === "connected" || statuses[id] === "unverified" || statuses[id] === "error");
     const total = INTEGRATIONS.length;
 
     const filtered = INTEGRATIONS.filter(i => {
         if (cat !== "all" && i.cat !== cat) return false;
-        if (onlyConn && statuses[i.id] !== "connected") return false;
+        if (onlyConn && statuses[i.id] === "disconnected") return false;
         if (search && !i.name.toLowerCase().includes(search.toLowerCase()) && !i.desc.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
     });
@@ -106,13 +111,13 @@ export default function JarvisConnections() {
 
         setSaving(true);
 
-        // Prepare payload
         const keysPayload = selected.keys.map((k: any, idx: number) => ({
             key_name: k.k,
             value: formVals[idx] || ""
         }));
 
         try {
+            // FASE 1: GUARDAR
             const res = await fetch('/api/credentials/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -127,25 +132,50 @@ export default function JarvisConnections() {
                 throw new Error(errData.error || 'Error al guardar credenciales')
             }
 
-            setStatuses(p => ({ ...p, [selected.id]: "connected" }));
-            setSaved(true);
             setSaving(false);
-            setPulse(selected.id);
-            setJarvisLog(p => [{
-                type: "success",
-                text: `${selected.name} conectado y cifrado en Vault. Jarvis ahora tiene acceso a esta integración.`
-            }, ...p]);
-            setTimeout(() => { setSaved(false); setSelected(null); setPulse(null); }, 1200);
+            setVerifying(true);
+            setJarvisLog(p => [{ type: "info", text: `Credenciales de ${selected.name} guardadas. Iniciando verificación de extremo a extremo...` }, ...p]);
+
+            // FASE 2: VERIFICAR
+            const verifyRes = await fetch('/api/credentials/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ integration_id: selected.id })
+            });
+
+            const verifyData = await verifyRes.json();
+
+            setVerifying(false);
+
+            if (verifyData.ok) {
+                setStatuses(p => ({ ...p, [selected.id]: "connected" }));
+                setMeta(p => ({ ...p, [selected.id]: verifyData }));
+                setSaved(true);
+                setPulse(selected.id);
+                setJarvisLog(p => [{
+                    type: "success",
+                    text: `${selected.name} verificado con éxito (${verifyData.latency_ms}ms).${verifyData.bot_name ? ` Bot detectado: @${verifyData.bot_name}` : ''}`
+                }, ...p]);
+                setTimeout(() => { setSaved(false); setSelected(null); setPulse(null); }, 1500);
+            } else {
+                setStatuses(p => ({ ...p, [selected.id]: "error" }));
+                setMeta(p => ({ ...p, [selected.id]: { error: verifyData.error } }));
+                setJarvisLog(p => [{
+                    type: "warn",
+                    text: `Fallo de validación en ${selected.name}: ${verifyData.error}`
+                }, ...p]);
+                // No cerramos el modal si falla la verificación para que el usuario pueda corregir
+            }
 
         } catch (error: any) {
             console.error(error);
             setSaving(false);
+            setVerifying(false);
             setJarvisLog(p => [{
                 type: "warn",
-                text: `Error al conectar ${selected?.name || 'Integración'}: ${error.message || 'Error desconocido'}`
+                text: `Error crítico en ${selected?.name || 'Integración'}: ${error.message || 'Error desconocido'}`
             }, ...p]);
         }
-
     };
 
     const handleDisconnect = (id: string, name: string) => {
@@ -164,7 +194,35 @@ export default function JarvisConnections() {
                 const res = await fetch('/api/credentials/status');
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.connected_ids && Array.isArray(data.connected_ids)) {
+
+                    // Suponiendo que /api/credentials/status ahora devuelve más info
+                    // O simplemente mapeamos los IDs que vienen.
+                    if (data.credentials && Array.isArray(data.credentials)) {
+                        const newStatuses: Record<string, string> = {};
+                        const newMeta: Record<string, any> = {};
+
+                        INTEGRATIONS.forEach(i => newStatuses[i.id] = "disconnected");
+
+                        data.credentials.forEach((c: any) => {
+                            if (c.is_active) {
+                                newStatuses[c.integration_id] = c.last_verify_ok ? "connected" : "unverified";
+                            } else if (c.last_error) {
+                                newStatuses[c.integration_id] = "error";
+                            } else {
+                                newStatuses[c.integration_id] = "unverified";
+                            }
+
+                            newMeta[c.integration_id] = {
+                                latency_ms: c.latency_ms,
+                                last_verified_at: c.last_verified_at,
+                                last_verify_ok: c.last_verify_ok,
+                                error: c.last_error
+                            };
+                        });
+                        setStatuses(newStatuses);
+                        setMeta(newMeta);
+                    } else if (data.connected_ids) {
+                        // Fallback para compatibilidad con versión anterior
                         const newStatuses = { ...Object.fromEntries(INTEGRATIONS.map(i => [i.id, "disconnected"])) };
                         data.connected_ids.forEach((id: string) => {
                             newStatuses[id] = "connected";
@@ -436,17 +494,34 @@ export default function JarvisConnections() {
                                             fontSize: 9, fontWeight: 700, letterSpacing: "1px",
                                             padding: "3px 7px", borderRadius: 3,
                                             fontFamily: "'Space Mono', monospace",
-                                            background: conn ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.03)",
-                                            color: conn ? "#4ADE80" : "#3A3A6E",
-                                            border: conn ? "1px solid rgba(74,222,128,0.2)" : "1px solid #1A1A3E",
+                                            background: conn ? (statuses[intg.id] === "connected" ? "rgba(74,222,128,0.1)" : statuses[intg.id] === "error" ? "rgba(239,68,68,0.1)" : "rgba(251,191,36,0.1)") : "rgba(255,255,255,0.03)",
+                                            color: conn ? (statuses[intg.id] === "connected" ? "#4ADE80" : statuses[intg.id] === "error" ? "#EF4444" : "#FBBF24") : "#3A3A6E",
+                                            border: conn ? `1px solid ${statuses[intg.id] === "connected" ? "rgba(74,222,128,0.2)" : statuses[intg.id] === "error" ? "rgba(239,68,68,0.2)" : "rgba(251,191,36,0.2)"}` : "1px solid #1A1A3E",
                                         }}>
-                                            {conn ? "● ON" : "○ OFF"}
+                                            {statuses[intg.id] === "connected" ? "● ACTIVA" : statuses[intg.id] === "error" ? "✕ ERROR" : statuses[intg.id] === "unverified" ? "○ GUARDADA" : "○ OFF"}
                                         </div>
                                     </div>
 
                                     <div style={{ fontSize: 11, color: "#5A5A8E", lineHeight: 1.6, marginBottom: 12, fontFamily: "'Space Mono', monospace" }}>
                                         {intg.desc}
                                     </div>
+
+                                    {/* Telemetry metadata */}
+                                    {conn && meta[intg.id] && (
+                                        <div style={{ display: "flex", gap: 8, marginTop: 0, marginBottom: 12, fontSize: 8, fontFamily: "'Space Mono', monospace" }}>
+                                            {meta[intg.id].latency_ms > 0 && (
+                                                <span style={{ color: "#4A4A8E" }}>LATENCIA: <span style={{ color: meta[intg.id].latency_ms < 500 ? "#4ADE80" : "#FBBF24" }}>{meta[intg.id].latency_ms}ms</span></span>
+                                            )}
+                                            {meta[intg.id].last_verified_at && (
+                                                <span style={{ color: "#3A3A6E" }}>V: {new Date(meta[intg.id].last_verified_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            )}
+                                        </div>
+                                    )}
+                                    {statuses[intg.id] === "error" && meta[intg.id]?.error && (
+                                        <div style={{ marginTop: -8, marginBottom: 12, fontSize: 8, color: "#EF4444", fontFamily: "'Space Mono', monospace", opacity: 0.8 }}>
+                                            ⚠ {meta[intg.id].error}
+                                        </div>
+                                    )}
 
                                     {/* Key names */}
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -596,15 +671,24 @@ export default function JarvisConnections() {
                             )}
                         </div>
 
-                        {/* Jarvis note */}
+                        {/* Jarvis note / Status info */}
                         <div style={{
-                            background: "rgba(123,123,255,0.06)",
-                            border: "1px solid rgba(123,123,255,0.15)",
+                            background: statuses[selected.id] === "error" ? "rgba(239,68,68,0.06)" : "rgba(123,123,255,0.06)",
+                            border: `1px solid ${statuses[selected.id] === "error" ? "rgba(239,68,68,0.15)" : "rgba(123,123,255,0.15)"}`,
                             borderRadius: 4, padding: "10px 14px",
-                            marginBottom: 24, fontSize: 10, color: "#7070CC",
+                            marginBottom: 24, fontSize: 10, color: statuses[selected.id] === "error" ? "#EF4444" : "#7070CC",
                             fontFamily: "'Space Mono', monospace", lineHeight: 1.7,
                         }}>
-                            ◆ JARVIS: Las credenciales se cifran con pgcrypto antes de guardarse en Supabase. Solo Jarvis puede descifrarlas en tiempo de ejecución.
+                            {verifying ? (
+                                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ width: 8, height: 8, border: "2px solid #7B7BFF", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                                    VERIFICANDO CONEXIÓN DE EXTREMO A EXTREMO...
+                                </span>
+                            ) : statuses[selected.id] === "error" ? (
+                                `✕ ERROR DE VALIDACIÓN: ${meta[selected.id]?.error || 'La API no respondió correctamente. Revisa tus credenciales.'}`
+                            ) : (
+                                "◆ JARVIS: Solo Jarvis puede descifrar estas llaves en tiempo de ejecución. El guardado dispara un test de conectividad real."
+                            )}
                         </div>
 
                         {/* Fields */}
@@ -661,19 +745,19 @@ export default function JarvisConnections() {
                                         color: "#4A4A8E", cursor: "pointer", fontSize: 11,
                                         fontFamily: "'Space Mono', monospace",
                                     }}>CANCELAR</button>
-                                    <button onClick={handleConnect} disabled={saving || saved} style={{
+                                    <button onClick={handleConnect} disabled={saving || saved || verifying} style={{
                                         flex: 2, padding: "12px", borderRadius: 4,
                                         background: saved ? "rgba(74,222,128,0.15)" :
-                                            saving ? "#13131F" :
+                                            (saving || verifying) ? "#13131F" :
                                                 `linear-gradient(135deg, ${selected.color}33, ${selected.color}15)`,
-                                        border: `1px solid ${saved ? "rgba(74,222,128,0.4)" : saving ? "#1A1A3E" : `${selected.color}50`}`,
-                                        color: saved ? "#4ADE80" : saving ? "#4A4A8E" : selected.color,
-                                        cursor: saving || saved ? "default" : "pointer",
+                                        border: `1px solid ${saved ? "rgba(74,222,128,0.4)" : (saving || verifying) ? "#1A1A3E" : `${selected.color}50`}`,
+                                        color: saved ? "#4ADE80" : (saving || verifying) ? "#4A4A8E" : selected.color,
+                                        cursor: saving || saved || verifying ? "default" : "pointer",
                                         fontSize: 11, fontWeight: 700,
                                         fontFamily: "'Space Mono', monospace",
                                         letterSpacing: "1px", transition: "all 0.2s",
                                     }}>
-                                        {saved ? "✓ CONECTADO" : saving ? "◌ CIFRANDO..." : `◆ CONECTAR ${selected.name.toUpperCase()}`}
+                                        {saved ? "✓ CONEXIÓN OK" : saving ? "◌ CIFRANDO..." : verifying ? "◌ VERIFICANDO..." : `◆ CONECTAR ${selected.name.toUpperCase()}`}
                                     </button>
                                 </>
                             )}

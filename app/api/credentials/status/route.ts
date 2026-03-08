@@ -5,24 +5,20 @@ export async function GET(req: NextRequest) {
     try {
         const supabase = await createClient()
 
-        // 1. Obtener los IDs únicos de integraciones que tienen al menos una credencial activa
+        // 1. Obtener todas las credenciales con sus metadatos de verificación
         const { data, error } = await supabase
             .from('api_credentials')
-            .select('integration_id')
-            .eq('is_active', true)
+            .select('integration_id, is_active, last_verified_at, last_verify_ok, last_error');
 
         if (error) {
             console.error('API /credentials/status Error:', error)
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
-        // 2. Extraer IDs únicos
-        const connectedIds = Array.from(new Set(data?.map(item => item.integration_id) || []))
-
-        return NextResponse.json({ connected_ids: connectedIds })
+        return NextResponse.json({ credentials: data || [] })
 
     } catch (err: any) {
-        console.error('API /credentials/status Error desconido:', err)
+        console.error('API /credentials/status Error desconocido:', err)
         return NextResponse.json({ error: 'Error interno' }, { status: 500 })
     }
 }

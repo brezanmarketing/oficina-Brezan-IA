@@ -1,14 +1,12 @@
 import { NextRequest } from 'next/server'
-import { getCredential } from '@/office/tools/credential-manager'
+import { createClient } from '@supabase/supabase-js'
+import { verifyCredential } from '@/office/tools/verify-api'
+import { sendMessage } from '@/office/tools/communications/index'
 
-async function sendMessage(service: string, chatId: string, text: string) {
-    const token = await getCredential('telegram', 'Bot Token');
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text })
-    });
-}
+const getSupabase = () => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+);
 
 export async function GET(req: NextRequest) {
     const auth = req.headers.get('authorization')
@@ -17,33 +15,61 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // Verificar OpenAI, Gemini, Telegram y Supabase
-        const checks = await Promise.allSettled([
-            fetch('https://api.openai.com/v1/models', {
-                headers: { Authorization: `Bearer ${await getCredential('openai', 'API Key')}` }
-            }),
-            fetch(`https://api.telegram.org/bot${await getCredential('telegram', 'Bot Token')}/getMe`),
-        ])
+        const supabase = getSupabase();
 
-        const results = checks.map((c, i) => ({
-            service: ['openai', 'telegram'][i],
-            ok: c.status === 'fulfilled' && c.value.ok
-        }))
+        // 1. Obtener todas las credenciales marcadas como activas
+        const { data: credentials, error: dbError } = await supabase
+            .from('api_credentials')
+            .select('integration_id, key_name')
+            .eq('is_active', true);
 
-        const anyDown = results.some(r => !r.ok)
+        if (dbError) throw dbError;
 
-        if (anyDown) {
-            const failed = results.filter(r => !r.ok).map(r => r.service)
-            // Notificar al CEO por Telegram
-            await sendMessage('telegram', '1404171793',
-                `⚠️ Health Check: servicios caídos: ${failed.join(', ')}`
-            )
+        const results = [];
+        const failures = [];
+
+        // 2. Verificar cada una
+        for (const cred of credentials || []) {
+            const result = await verifyCredential(cred.integration_id);
+            results.push({
+                integration_id: cred.integration_id,
+                ok: result.ok,
+                latency: result.latency_ms,
+                error: result.error
+            });
+
+            if (!result.ok) {
+                failures.push(cred.integration_id);
+
+                // Si falla, la marcamos como inactiva para evitar errores en cadena de Jarvis
+                await supabase.from('api_credentials')
+                    .update({ is_active: false })
+                    .eq('integration_id', cred.integration_id);
+            }
         }
 
-        return Response.json({ ok: true, results })
+        // 3. Notificar al CEO si hay fallos
+        if (failures.length > 0) {
+            const ownerId = process.env.TELEGRAM_OWNER_ID || '1404171793';
+            await sendMessage('telegram', ownerId,
+                `🚨 *ALERTA DE SISTEMA: Credenciales Caídas*\n\n` +
+                `Se han detectado fallos en las siguientes integraciones:\n` +
+                `${failures.map(f => `• ${f.toUpperCase()}`).join('\n')}\n\n` +
+                `_Las credenciales han sido desactivadas preventivamente. Por favor, reconéctalas en el Panel de Conexiones._`
+            ).catch(err => console.error('Error enviando alerta de health-check:', err));
+        }
 
-    } catch (error) {
-        return Response.json({ ok: false, error }, { status: 500 })
+        return Response.json({
+            ok: true,
+            timestamp: new Date().toISOString(),
+            total_checked: results.length,
+            failures: failures.length,
+            results
+        });
+
+    } catch (error: any) {
+        console.error('HEALTH_CHECK CRITICAL ERROR:', error);
+        return Response.json({ ok: false, error: error.message }, { status: 500 })
     }
 }
 
