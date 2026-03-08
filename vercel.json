@@ -22,24 +22,8 @@
             "schedule": "0 3 * * *"
         },
         {
-            "path": "/api/cron/health-check",
-            "schedule": "*/30 * * * *"
-        },
-        {
             "path": "/api/cron/self-audit",
             "schedule": "0 22 * * 0"
-        },
-        {
-            "path": "/api/cron/check-emails",
-            "schedule": "*/5 * * * *"
-        },
-        {
-            "path": "/api/cron/check-conditions",
-            "schedule": "*/5 * * * *"
-        },
-        {
-            "path": "/api/cron/calendar-notify",
-            "schedule": "* * * * *"
         }
     ]
 }
