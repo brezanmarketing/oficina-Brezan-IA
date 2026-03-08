@@ -101,25 +101,83 @@ function TabButton({ active, onClick, icon: Icon, label }: { active: boolean, on
 function CronTab() {
     const supabase = createClient();
     const [crons, setCrons] = useState<any[]>([]);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingCron, setEditingCron] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchCrons();
     }, []);
 
     const fetchCrons = async () => {
-        const { data } = await supabase.from('scheduled_triggers').select('*').order('created_at', { ascending: false });
+        const { data } = await supabase.from('scheduled_triggers').select('*').eq('type', 'cron').order('created_at', { ascending: false });
         if (data) setCrons(data);
     };
 
     const toggleStatus = async (id: string, currentStatus: boolean) => {
         await supabase.from('scheduled_triggers').update({ is_active: !currentStatus }).eq('id', id);
         fetchCrons();
+        syncCalendar();
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('¿Estás seguro de eliminar esta automatización?')) return;
+        setLoading(true);
+        await supabase.from('scheduled_triggers').delete().eq('id', id);
+        await fetchCrons();
+        await syncCalendar();
+        setLoading(false);
+    };
+
+    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+        const fd = new FormData(e.currentTarget);
+
+        const payload = {
+            name: fd.get('name') as string,
+            description: fd.get('description') as string,
+            cron_expr: fd.get('cron_expr') as string,
+            objective: fd.get('objective') as string,
+            type: 'cron',
+            is_active: true
+        };
+
+        if (editingCron) {
+            await supabase.from('scheduled_triggers').update(payload).eq('id', editingCron.id);
+        } else {
+            await supabase.from('scheduled_triggers').insert(payload);
+        }
+
+        setIsEditModalOpen(false);
+        setEditingCron(null);
+        await fetchCrons();
+        await syncCalendar();
+        setLoading(false);
+    };
+
+    const syncCalendar = async () => {
+        try {
+            await fetch('/api/cron/sync');
+        } catch (e) {
+            console.error('Error syncing calendar:', e);
+        }
     };
 
     return (
         <div className="space-y-4">
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-white/90">Gestión de Tareas Programadas</h3>
+                <button
+                    onClick={() => { setEditingCron(null); setIsEditModalOpen(true); }}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 rounded-xl text-sm transition-all"
+                >
+                    <Plus className="w-4 h-4" /> Nuevo Cron
+                </button>
+            </div>
+
             {crons.map(cron => (
-                <div key={cron.id} className="bg-slate-900 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-colors">
+                <div key={cron.id} className="bg-slate-900 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all group">
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
@@ -130,12 +188,24 @@ function CronTab() {
                                 <p className="text-xs text-slate-400 font-mono mt-0.5">{cron.cron_expr} • {cron.description}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className={`text-xs px-2 py-1 rounded-full ${cron.is_active ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-500'}`}>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${cron.is_active ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-500'}`}>
                                 {cron.is_active ? 'Activo' : 'Pausado'}
                             </span>
-                            <button onClick={() => toggleStatus(cron.id, cron.is_active)} className="text-slate-400 hover:text-white">
+                            <button onClick={() => toggleStatus(cron.id, cron.is_active)} title={cron.is_active ? "Pausar" : "Activar"} className="p-2 text-slate-400 hover:text-white transition-colors">
                                 {cron.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            </button>
+                            <button
+                                onClick={() => { setEditingCron(cron); setIsEditModalOpen(true); }}
+                                className="p-2 text-slate-400 hover:text-indigo-400 transition-colors"
+                            >
+                                <List className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => handleDelete(cron.id)}
+                                className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
@@ -145,14 +215,58 @@ function CronTab() {
                         {cron.objective}
                     </div>
 
-                    <div className="flex gap-4 text-xs text-slate-500">
-                        <span>Último: {cron.last_run_at ? new Date(cron.last_run_at).toLocaleString() : 'Nunca'}</span>
-                        <span>Ejecuciones: {cron.run_count}</span>
-                        <span>Fallos: <span className={cron.fail_count > 0 ? "text-red-400" : ""}>{cron.fail_count}</span></span>
+                    <div className="flex gap-4 text-[10px] text-slate-500 font-mono">
+                        <span>ÚLTIMA EJECUCIÓN: {cron.last_run_at ? new Date(cron.last_run_at).toLocaleString() : 'NUNCA'}</span>
+                        <span>COUNT: {cron.run_count}</span>
+                        <span>FAIL: <span className={cron.fail_count > 0 ? "text-red-400" : ""}>{cron.fail_count}</span></span>
                     </div>
                 </div>
             ))}
-            {crons.length === 0 && <p className="text-slate-500 text-center py-10">No hay cron jobs configurados.</p>}
+
+            {crons.length === 0 && <p className="text-slate-500 text-center py-10 italic">No hay cron jobs configurados.</p>}
+
+            {/* Modal de Edición/Creación */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-950 border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+                        <form onSubmit={handleSave}>
+                            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-indigo-500/5">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-indigo-400" />
+                                    {editingCron ? 'Editar Cron Job' : 'Nuevo Cron Job'}
+                                </h3>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white">&times;</button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre</label>
+                                        <input name="name" defaultValue={editingCron?.name} required type="text" placeholder="Reporte diario" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-indigo-500 outline-none transition-all" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Expresión Cron</label>
+                                        <input name="cron_expr" defaultValue={editingCron?.cron_expr || '0 9 * * *'} required type="text" placeholder="0 9 * * *" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-white font-mono focus:border-indigo-500 outline-none transition-all" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Descripción Corta</label>
+                                    <input name="description" defaultValue={editingCron?.description} required type="text" placeholder="Breve resumen de la tarea" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-indigo-500 outline-none transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Objetivo de Jarvis (Prompt)</label>
+                                    <textarea name="objective" defaultValue={editingCron?.objective} required placeholder="Define exactamente qué debe hacer Jarvis..." rows={4} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-white resize-none focus:border-indigo-500 outline-none transition-all" />
+                                </div>
+                            </div>
+                            <div className="p-6 border-t border-white/5 bg-slate-900/50 flex justify-end gap-3">
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-all uppercase tracking-wider">Cancelar</button>
+                                <button type="submit" disabled={loading} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50">
+                                    {loading ? 'Guardando...' : (editingCron ? 'Actualizar' : 'Crear y Activar')}
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }
