@@ -130,6 +130,16 @@ export default function AgendaPage() {
                             center: 'title',
                             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
                         }}
+                        eventContent={(eventInfo) => (
+                            <div className="flex items-center gap-1 overflow-hidden px-1 py-0.5">
+                                {eventInfo.event.extendedProps.type === 'cron' && (
+                                    <Clock className="w-3 h-3 shrink-0" />
+                                )}
+                                <span className="truncate text-[10px] font-medium leading-tight">
+                                    {eventInfo.event.title}
+                                </span>
+                            </div>
+                        )}
                         events={events}
                         eventClick={handleEventClick}
                         height="100%"
@@ -166,13 +176,21 @@ export default function AgendaPage() {
                     ) : (
                         <div className="space-y-4">
                             {upcomingEvents.slice(0, 8).map((ev, i) => (
-                                <div key={i} className="flex gap-3 relative before:absolute before:left-1 before:top-6 before:bottom-[-16px] before:w-[2px] before:bg-white/5 last:before:hidden">
-                                    <div className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 z-10" style={{ backgroundColor: ev.backgroundColor }} />
+                                <div key={i} className="flex gap-3 relative before:absolute before:left-1.5 before:top-6 before:bottom-[-16px] before:w-[2px] before:bg-white/5 last:before:hidden">
+                                    <div className="shrink-0 z-10 flex items-center justify-center translate-y-1">
+                                        {ev.extendedProps?.type === 'cron' ? (
+                                            <div className="w-3 h-3 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                                                <Clock className="w-2.5 h-2.5 text-indigo-400" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: ev.backgroundColor }} />
+                                        )}
+                                    </div>
                                     <div>
-                                        <p className="text-xs text-slate-400 mb-0.5">
+                                        <p className="text-[10px] text-slate-500 mb-0.5 font-mono">
                                             {new Date(ev.start).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </p>
-                                        <p className="text-sm font-medium text-white line-clamp-2">{ev.title}</p>
+                                        <p className="text-sm font-medium text-white line-clamp-2 leading-tight">{ev.title}</p>
                                     </div>
                                 </div>
                             ))}

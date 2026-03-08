@@ -57,26 +57,18 @@ export async function syncCronJobsToCalendar() {
 
             const interval = parseCron(trigger.cron_expr);
 
-            // Determinar color por nombre/tipo
-            let color = '#3b82f6'; // default blue
-            const name = trigger.name.toLowerCase();
-            if (name.includes('health') || name.includes('check') || name.includes('limpieza') || name.includes('audit')) {
-                color = '#10b981'; // green (maintenance/health)
-            } else if (name.includes('informe') || name.includes('briefing') || name.includes('report') || name.includes('dirario')) {
-                color = '#f59e0b'; // amber (intelligence)
-            } else if (name.includes('coste')) {
-                color = '#ef4444'; // red (control/money)
-            }
+            // Determinar color solicitado por el usuario
+            const color = '#6366F1';
 
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 4; i++) { // Proyectar exactamente 4 ejecuciones
                 const nextDate = interval.next().toDate();
                 newEvents.push({
-                    title: `🤖 Jarvis: ${trigger.name}`,
-                    description: `Objetivo: ${trigger.objective}\n\nCron: ${trigger.cron_expr}`,
+                    title: trigger.name, // Nombre limpio solicitado
+                    description: trigger.objective, // Objetivo directo
                     type: 'cron',
                     color: color,
                     start_at: nextDate.toISOString(),
-                    end_at: new Date(nextDate.getTime() + 15 * 60000).toISOString(), // Duración nominal 15 min
+                    end_at: new Date(nextDate.getTime() + 15 * 60000).toISOString(),
                     all_day: false,
                     recurring: true,
                     cron_expr: trigger.cron_expr,

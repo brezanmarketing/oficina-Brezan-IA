@@ -115,9 +115,11 @@ function CronTab() {
     };
 
     const toggleStatus = async (id: string, currentStatus: boolean) => {
+        setLoading(true);
         await supabase.from('scheduled_triggers').update({ is_active: !currentStatus }).eq('id', id);
-        fetchCrons();
-        syncCalendar();
+        await fetchCrons();
+        await syncCalendar();
+        setLoading(false);
     };
 
     const handleDelete = async (id: string) => {
