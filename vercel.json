@@ -6,24 +6,8 @@
     },
     "crons": [
         {
-            "path": "/api/cron/daily-briefing",
-            "schedule": "0 8 * * *"
-        },
-        {
-            "path": "/api/cron/cost-review",
+            "path": "/api/cron/daily-master",
             "schedule": "0 9 * * *"
-        },
-        {
-            "path": "/api/cron/weekly-report",
-            "schedule": "0 9 * * 1"
-        },
-        {
-            "path": "/api/cron/cleanup",
-            "schedule": "0 3 * * *"
-        },
-        {
-            "path": "/api/cron/self-audit",
-            "schedule": "0 22 * * 0"
         }
     ]
 }
