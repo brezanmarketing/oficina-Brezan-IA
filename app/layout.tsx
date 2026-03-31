@@ -1,16 +1,30 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Space_Grotesk, Inter } from 'next/font/google'
 import './globals.css'
+import { ProjectProvider } from '@/context/ProjectContext'
 
-const inter = Inter({ subsets: ['latin'] })
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-display',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-body',
+})
 
 export const metadata: Metadata = {
-  title: 'Oficina Brezan IA',
-  description: 'Oficina virtual interactiva con agentes de inteligencia artificial',
-  keywords: 'IA, agentes, inteligencia artificial, SaaS, automatización, Vercel',
+  title: 'Oficina Brezan IA — Jarvis OS',
+  description: 'Sistema de inteligencia artificial central con J.A.R.V.I.S. — Oficina virtual autónoma de Brezan.',
+  keywords: 'IA, Jarvis, agentes autónomos, oficina virtual, inteligencia artificial, Brezan',
+  openGraph: {
+    title: 'Oficina Brezan IA — Jarvis OS',
+    description: 'Sistema de inteligencia artificial central con J.A.R.V.I.S.',
+    type: 'website',
+  },
 }
-
-import { ProjectProvider } from '@/context/ProjectContext'
 
 export default function RootLayout({
   children,
@@ -18,8 +32,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className="dark">
-      <body className={`${inter.className} bg-slate-950 text-white antialiased`}>
+    <html lang="es" className="dark" suppressHydrationWarning>
+      <body
+        className={`${spaceGrotesk.variable} ${inter.variable} antialiased`}
+      >
         <ProjectProvider>
           {children}
         </ProjectProvider>
