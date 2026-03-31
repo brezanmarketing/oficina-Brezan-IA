@@ -149,7 +149,7 @@ ${ACTIONS_PROTOCOL}
             }))
 
             // Resolve model name.
-            let resolvedModel = 'gemini-2.0-flash'
+            let resolvedModel = 'gemini-2.5-flash'
             if (model === 'gemini-2.5-pro') resolvedModel = 'gemini-2.5-pro'
             if (model === 'gemini-2.0-pro-exp') resolvedModel = 'gemini-2.0-pro-exp-02-05'
 

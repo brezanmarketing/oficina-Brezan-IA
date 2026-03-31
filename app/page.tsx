@@ -6,6 +6,7 @@ import JarvisChat from '@/components/jarvis/JarvisChat'
 import JarvisRightPanel from '@/components/jarvis/JarvisRightPanel'
 import ProjectWorkspace from '@/components/jarvis/ProjectWorkspace'
 import { FolderKanban, Users, Zap, BarChart3, Calendar, HardDrive, Link2, Cpu } from 'lucide-react'
+import { SystemStatus } from '@/components/SystemStatus'
 
 
 /* ─── Placeholder views ────────────────────────────────── */
@@ -87,6 +88,7 @@ export default function OficinaBrezanIA() {
     <div
       style={{
         display: 'flex',
+        flexDirection: 'column',
         height: '100vh',
         width: '100vw',
         overflow: 'hidden',
@@ -96,12 +98,18 @@ export default function OficinaBrezanIA() {
     >
       {/* Ambient glow overlay */}
       <div className="ambient-orb-top" aria-hidden="true" />
+      
+      {/* ── System Status Bar ── */}
+      <div style={{ zIndex: 10 }}>
+        <SystemStatus />
+      </div>
 
-      {/* ── Sidebar ── */}
-      <JarvisSidebar activeView={activeView} onNavigate={setActiveView} />
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* ── Sidebar ── */}
+        <JarvisSidebar activeView={activeView} onNavigate={setActiveView} />
 
-      {/* ── Main Content ── */}
-      <main
+        {/* ── Main Content ── */}
+        <main
         className="flex-1 flex circuit-bg"
         style={{
           overflow: 'hidden',
@@ -125,6 +133,7 @@ export default function OficinaBrezanIA() {
           placeholder && <PlaceholderView {...placeholder} />
         )}
       </main>
+      </div>
     </div>
   )
 }

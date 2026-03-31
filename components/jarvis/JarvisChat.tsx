@@ -48,7 +48,7 @@ Aguardo su directiva.`,
 }
 
 const MODELS = [
-  { id: 'gemini-2.0-flash', label: 'Gemini Flash' },
+  { id: 'gemini-2.5-flash', label: 'Gemini Flash' },
   { id: 'gemini-2.5-pro',   label: 'Gemini Pro' },
   { id: 'gpt-4o',           label: 'GPT-4o' },
   { id: 'gpt-4o-mini',      label: 'GPT-4o Mini' },
@@ -197,7 +197,7 @@ export default function JarvisChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE])
   const [input, setInput] = useState('')
   const [isThinking, setIsThinking] = useState(false)
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
   const [autonomyMode, setAutonomyMode] = useState<'full' | 'safe' | 'confirm'>('full')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
