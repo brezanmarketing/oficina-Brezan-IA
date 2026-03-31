@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, MoreVertical, CheckCircle2, Circle, Clock, Flame, Users, Bot, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import JarvisChat from '@/components/jarvis/JarvisChat'
 
 export default function ProjectWorkspace() {
   const [project, setProject] = useState<any>(null)
@@ -11,15 +12,21 @@ export default function ProjectWorkspace() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
-  const [chatMessages, setChatMessages] = useState<{role: string, text: string}[]>([
-    { role: 'assistant', text: 'Monitoreando tareas conectadas a Supabase. Listo para orquestar cambios.' }
-  ])
-  const [chatInput, setChatInput] = useState('')
 
   const supabase = createClient()
 
   useEffect(() => {
     fetchWorkspace()
+
+    const channel = supabase.channel('tasks_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+        fetchWorkspace()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const fetchWorkspace = async () => {
@@ -94,20 +101,6 @@ export default function ProjectWorkspace() {
 
     setNewTaskTitle('')
     setIsModalOpen(false)
-  }
-
-  const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!chatInput.trim()) return
-    
-    setChatMessages(prev => [...prev, { role: 'user', text: chatInput }])
-    const currentInput = chatInput
-    setChatInput('')
-
-    // Jarvis responds mock
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, { role: 'assistant', text: `Recibido: "${currentInput}". Apuntes registrados en progreso.` }])
-    }, 600)
   }
 
   if (loading) {
@@ -206,22 +199,7 @@ export default function ProjectWorkspace() {
             </div>
           </div>
 
-          <div className="flex-1 rounded-xl border flex flex-col" style={{ background: 'var(--surface)', borderColor: 'var(--border)', minHeight: '300px' }}>
-            <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
-              <Bot size={16} className="text-indigo-400" />
-              <h3 className="text-sm font-semibold text-white">Jarvis Ops</h3>
-            </div>
-            <div className="flex-1 p-4 flex flex-col gap-3 text-sm overflow-y-auto custom-scrollbar">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`rounded-lg p-3 max-w-[90%] ${msg.role === 'user' ? 'self-end bg-indigo-600/20 border-indigo-500/30 text-right' : 'self-start'}`} style={msg.role === 'user' ? { border: '1px solid var(--primary)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <p className="text-gray-300">{msg.text}</p>
-                </div>
-              ))}
-            </div>
-            <form onSubmit={handleChatSubmit} className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>
-              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Instrucción Rápida..." className="w-full bg-black/40 border rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" style={{ borderColor: 'var(--border)' }} />
-            </form>
-          </div>
+          <JarvisChat variant="compact" />
 
         </div>
       </div>

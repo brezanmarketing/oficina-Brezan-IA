@@ -7,6 +7,7 @@ import JarvisRightPanel from '@/components/jarvis/JarvisRightPanel'
 import ProjectWorkspace from '@/components/jarvis/ProjectWorkspace'
 import { FolderKanban, Users, Zap, BarChart3, Calendar, HardDrive, Link2, Cpu } from 'lucide-react'
 import { SystemStatus } from '@/components/SystemStatus'
+import { JarvisChatProvider } from '@/components/jarvis/JarvisChatProvider'
 
 
 /* ─── Placeholder views ────────────────────────────────── */
@@ -85,55 +86,57 @@ export default function OficinaBrezanIA() {
   const placeholder = VIEW_CONFIG[activeView]
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        width: '100vw',
-        overflow: 'hidden',
-        background: 'var(--void)',
-        position: 'relative',
-      }}
-    >
-      {/* Ambient glow overlay */}
-      <div className="ambient-orb-top" aria-hidden="true" />
-      
-      {/* ── System Status Bar ── */}
-      <div style={{ zIndex: 10 }}>
-        <SystemStatus />
-      </div>
-
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* ── Sidebar ── */}
-        <JarvisSidebar activeView={activeView} onNavigate={setActiveView} />
-
-        {/* ── Main Content ── */}
-        <main
-        className="flex-1 flex circuit-bg"
+    <JarvisChatProvider>
+      <div
         style={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          width: '100vw',
           overflow: 'hidden',
-          background: 'var(--surface)',
+          background: 'var(--void)',
           position: 'relative',
         }}
       >
-        {isJarvisView ? (
-          <>
-            {/* Jarvis Chat — full layout */}
-            <div className="flex-1 flex flex-col overflow-hidden" style={{ zIndex: 1 }}>
-              <JarvisChat />
-            </div>
-            {/* Right Panel */}
-            <JarvisRightPanel />
-          </>
-        ) : isProjectView ? (
-          <ProjectWorkspace />
-        ) : (
-          /* Placeholder views */
-          placeholder && <PlaceholderView {...placeholder} />
-        )}
-      </main>
+        {/* Ambient glow overlay */}
+        <div className="ambient-orb-top" aria-hidden="true" />
+        
+        {/* ── System Status Bar ── */}
+        <div style={{ zIndex: 10 }}>
+          <SystemStatus />
+        </div>
+
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* ── Sidebar ── */}
+          <JarvisSidebar activeView={activeView} onNavigate={setActiveView} />
+
+          {/* ── Main Content ── */}
+          <main
+          className="flex-1 flex circuit-bg"
+          style={{
+            overflow: 'hidden',
+            background: 'var(--surface)',
+            position: 'relative',
+          }}
+        >
+          {isJarvisView ? (
+            <>
+              {/* Jarvis Chat — full layout */}
+              <div className="flex-1 flex flex-col overflow-hidden" style={{ zIndex: 1 }}>
+                <JarvisChat />
+              </div>
+              {/* Right Panel */}
+              <JarvisRightPanel />
+            </>
+          ) : isProjectView ? (
+            <ProjectWorkspace />
+          ) : (
+            /* Placeholder views */
+            placeholder && <PlaceholderView {...placeholder} />
+          )}
+        </main>
+        </div>
       </div>
-    </div>
+    </JarvisChatProvider>
   )
 }

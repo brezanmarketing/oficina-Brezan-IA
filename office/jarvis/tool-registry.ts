@@ -125,6 +125,44 @@ export const Registry: ToolRegistration[] = [
         requires_credentials: ['telegram', 'slack'], // Not estrictamente si se usan env vars, pero ideal check
         can_be_parallelized: true,
         timeout_ms: 5000
+    },
+    {
+        tool: {
+            name: 'create-task',
+            execute: async (p, context) => {
+                const supabase = getSupabase();
+                let assigned_agent_id = null;
+                
+                if (p.assigned_agent_name) {
+                    const { data: agData } = await supabase
+                        .from('agents')
+                        .select('id')
+                        .ilike('name', p.assigned_agent_name)
+                        .single();
+                    if (agData) assigned_agent_id = agData.id;
+                }
+
+                const { data, error } = await supabase
+                    .from('tasks')
+                    .insert([{
+                        title: p.title,
+                        status: p.status || 'pending',
+                        priority: p.priority || 'media',
+                        assigned_agent_id: assigned_agent_id,
+                        project_id: (context?.project_id && context.project_id !== 'default') ? context.project_id : null
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                return `Tarea creada con éxito: "${data.title}" (ID: ${data.id})`;
+            }
+        },
+        triggers: ['tarea', 'task', 'asignar', 'kanban', 'todo', 'hacer'],
+        cost_estimate: 'free',
+        requires_credentials: [],
+        can_be_parallelized: true,
+        timeout_ms: 10000
     }
 ];
 

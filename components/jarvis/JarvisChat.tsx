@@ -1,29 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import {
   Send, Zap, MemoryStick, ListTodo, Users, Search,
   FolderKanban, ChevronDown, Loader2, CheckCircle2,
-  AlertCircle, Terminal, Brain, Cpu
+  AlertCircle, Terminal, Brain, Cpu, Bot
 } from 'lucide-react'
-
-/* ─── Types ──────────────────────────────────────────── */
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'jarvis' | 'system'
-  content: string
-  timestamp: Date
-  isThinking?: boolean
-  actions?: ActionResult[]
-  model?: string
-}
-
-interface ActionResult {
-  type: string
-  status: 'pending' | 'running' | 'success' | 'error'
-  description: string
-  result?: string
-}
+import { useJarvisChat, ChatMessage, ActionResult, MODELS } from './JarvisChatProvider'
 
 const QUICK_COMMANDS = [
   { label: '/proyecto', icon: FolderKanban, hint: 'Crear o gestionar proyecto' },
@@ -33,28 +16,6 @@ const QUICK_COMMANDS = [
   { label: '/búsqueda', icon: Search,       hint: 'Buscar en web o recursos' },
 ]
 
-const WELCOME_MESSAGE: ChatMessage = {
-  id: 'welcome-0',
-  role: 'jarvis',
-  content: `Sistemas en línea. Buenas tardes, CEO.
-
-Soy J.A.R.V.I.S., su sistema central de inteligencia artificial. Todos los subsistemas están operativos y estoy ejecutando en **Modo Autonomía Total** — puedo actuar, ejecutar y completar objetivos sin requerir confirmación para cada paso.
-
-¿En qué trabaja hoy? Puedo gestionar proyectos, coordinar el equipo de agentes, analizar datos, redactar contenido o explorar nuevas oportunidades de negocio.
-
-Aguardo su directiva.`,
-  timestamp: new Date(),
-  model: 'Gemini Flash'
-}
-
-const MODELS = [
-  { id: 'gemini-2.5-flash', label: 'Gemini Flash' },
-  { id: 'gemini-2.5-pro',   label: 'Gemini Pro' },
-  { id: 'gpt-4o',           label: 'GPT-4o' },
-  { id: 'gpt-4o-mini',      label: 'GPT-4o Mini' },
-]
-
-/* ─── Subcomponents ──────────────────────────────────── */
 function ThinkingIndicator() {
   return (
     <div className="flex items-center gap-3 p-4 msg-jarvis" style={{ borderRadius: '0 12px 12px 12px', maxWidth: 200 }}>
@@ -106,7 +67,7 @@ function ActionCard({ action }: { action: ActionResult }) {
   )
 }
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+function MessageBubble({ msg, compact }: { msg: ChatMessage, compact?: boolean }) {
   const isJarvis = msg.role === 'jarvis'
   const isSystem = msg.role === 'system'
   const isUser   = msg.role === 'user'
@@ -114,7 +75,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   if (msg.isThinking) {
     return (
       <div className="flex gap-3 animate-float-up" style={{ alignItems: 'flex-start' }}>
-        <JarvisAvatar small />
+        {!compact && <JarvisAvatar small />}
         <ThinkingIndicator />
       </div>
     )
@@ -135,21 +96,23 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       className={`flex gap-3 animate-float-up ${isUser ? 'flex-row-reverse' : ''}`}
       style={{ alignItems: 'flex-start' }}
     >
-      {isJarvis && <JarvisAvatar small />}
-      <div style={{ maxWidth: '75%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+      {isJarvis && !compact && <JarvisAvatar small />}
+      <div style={{ maxWidth: compact ? '90%' : '75%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: isUser ? 'flex-end' : 'flex-start', width: compact ? '100%' : 'auto' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--on-surface-dim)', flexDirection: isUser ? 'row-reverse' : 'row' }}>
-          <span className="font-display font-semibold" style={{ color: isJarvis ? 'var(--primary)' : 'var(--secondary)' }}>
-            {isJarvis ? 'J.A.R.V.I.S.' : 'CEO'}
-          </span>
-          {msg.model && <span style={{ color: 'var(--on-surface-dim)', fontSize: 10 }}>· {msg.model}</span>}
-          <span suppressHydrationWarning>{msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
+        {!compact && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--on-surface-dim)', flexDirection: isUser ? 'row-reverse' : 'row' }}>
+            <span className="font-display font-semibold" style={{ color: isJarvis ? 'var(--primary)' : 'var(--secondary)' }}>
+              {isJarvis ? 'J.A.R.V.I.S.' : 'CEO'}
+            </span>
+            {msg.model && <span style={{ color: 'var(--on-surface-dim)', fontSize: 10 }}>· {msg.model}</span>}
+            <span suppressHydrationWarning>{msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+        )}
 
         {/* Content */}
-        <div className={isJarvis ? 'msg-jarvis' : 'msg-user'} style={{ padding: '12px 16px' }}>
+        <div className={isJarvis ? 'msg-jarvis' : 'msg-user'} style={{ padding: compact ? '8px 12px' : '12px 16px', borderRadius: compact ? '8px' : undefined, width: compact && isUser ? 'auto' : (compact ? '100%' : 'auto') }}>
           <div
-            style={{ fontSize: 14, lineHeight: '1.6', whiteSpace: 'pre-wrap', fontFamily: "'Inter', sans-serif" }}
+            style={{ fontSize: compact ? 13 : 14, lineHeight: '1.6', whiteSpace: 'pre-wrap', fontFamily: "'Inter', sans-serif" }}
             dangerouslySetInnerHTML={{
               __html: msg.content
                 .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--primary);font-weight:600">$1</strong>')
@@ -192,110 +155,26 @@ function JarvisAvatar({ small = false }: { small?: boolean }) {
   )
 }
 
-/* ─── Main Component ─────────────────────────────────── */
-export default function JarvisChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE])
-  const [input, setInput] = useState('')
-  const [isThinking, setIsThinking] = useState(false)
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
-  const [autonomyMode, setAutonomyMode] = useState<'full' | 'safe' | 'confirm'>('full')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+export default function JarvisChat({ variant = 'full' }: { variant?: 'full' | 'compact' }) {
   const [showModelDropdown, setShowModelDropdown] = useState(false)
-
-  // Auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  // Auto-resize textarea
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value)
-    const ta = e.target
-    ta.style.height = 'auto'
-    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'
-  }
-
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || isThinking) return
-
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    }
-
-    const thinkingMsg: ChatMessage = {
-      id: `thinking-${Date.now()}`,
-      role: 'jarvis',
-      content: '',
-      timestamp: new Date(),
-      isThinking: true,
-    }
-
-    setMessages(prev => [...prev, userMsg, thinkingMsg])
-    setInput('')
-    setIsThinking(true)
-
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
-
-    try {
-      const history = messages
-        .filter(m => !m.isThinking && m.id !== 'welcome-0')
-        .slice(-20)
-        .map(m => ({ role: m.role === 'jarvis' ? 'assistant' : 'user', content: m.content }))
-
-      const res = await fetch('/api/agent/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMsg.content,
-          agentId: 'jarvis-system',
-          model: selectedModel,
-          history,
-          autonomyLevel: autonomyMode,
-        }),
-      })
-
-      const data = await res.json()
-
-      const jarvisMsg: ChatMessage = {
-        id: `jarvis-${Date.now()}`,
-        role: 'jarvis',
-        content: data.response || data.message || data.error || 'Sin respuesta del sistema.',
-        timestamp: new Date(),
-        model: MODELS.find(m => m.id === selectedModel)?.label,
-      }
-
-      setMessages(prev => prev.filter(m => !m.isThinking).concat(jarvisMsg))
-    } catch (err) {
-      const errorMsg: ChatMessage = {
-        id: `error-${Date.now()}`,
-        role: 'system',
-        content: 'Error de conexión con el sistema. Reintentando...',
-        timestamp: new Date(),
-      }
-      setMessages(prev => prev.filter(m => !m.isThinking).concat(errorMsg))
-    } finally {
-      setIsThinking(false)
-    }
-  }, [input, isThinking, messages, selectedModel, autonomyMode])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
-
-  const insertCommand = (cmd: string) => {
-    setInput(prev => prev ? `${prev} ${cmd} ` : `${cmd} `)
-    textareaRef.current?.focus()
-  }
+  const isCompact = variant === 'compact'
+  
+  const {
+    messages,
+    input,
+    isThinking,
+    selectedModel,
+    autonomyMode,
+    setInput,
+    setSelectedModel,
+    setAutonomyMode,
+    sendMessage,
+    insertCommand,
+    messagesEndRef,
+    textareaRef,
+    handleInputChange,
+    handleKeyDown
+  } = useJarvisChat()
 
   const autonomyLabels = {
     full:    { label: 'Autonomía TOTAL', color: 'var(--secondary)', bg: 'rgba(6,182,212,0.08)' },
@@ -305,216 +184,243 @@ export default function JarvisChat() {
   const currentAutonomy = autonomyLabels[autonomyMode]
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={`flex flex-col h-full ${isCompact ? 'rounded-xl border' : ''}`} style={isCompact ? { background: 'var(--surface)', borderColor: 'var(--border)', minHeight: '300px' } : undefined}>
 
       {/* ── Header ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 20px',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--surface-low)',
-          flexShrink: 0,
-        }}
-      >
-        {/* Jarvis Identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <JarvisAvatar />
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h2
-                className="font-display font-bold"
-                style={{ fontSize: 16, color: 'var(--on-surface)', letterSpacing: '-0.02em', margin: 0 }}
-              >
-                J.A.R.V.I.S.
-              </h2>
-              <span className="status-dot status-thinking" style={{ width: 7, height: 7 }} />
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--on-surface-dim)', margin: 0, fontFamily: "'Space Grotesk', sans-serif" }}>
-              Director de IA · {currentAutonomy.label}
-            </p>
+      {isCompact ? (
+        <div className="p-4 border-b flex items-center justify-between gap-2" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center gap-2">
+            <Bot size={16} className="text-indigo-400" />
+            <h3 className="text-sm font-semibold text-white">Jarvis Ops</h3>
           </div>
+          {isThinking && <Loader2 size={14} className="animate-spin text-indigo-400" />}
         </div>
-
-        {/* Right controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Autonomy toggle */}
-          <button
-            onClick={() => setAutonomyMode(m => m === 'full' ? 'safe' : m === 'safe' ? 'confirm' : 'full')}
-            style={{
-              background: currentAutonomy.bg,
-              border: `1px solid ${currentAutonomy.color}30`,
-              borderRadius: 8,
-              padding: '5px 12px',
-              fontSize: 11,
-              fontWeight: 700,
-              color: currentAutonomy.color,
-              cursor: 'pointer',
-              fontFamily: "'Space Grotesk', sans-serif",
-              letterSpacing: '0.03em',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all 0.2s',
-            }}
-          >
-            <Zap size={11} />
-            {currentAutonomy.label}
-          </button>
-
-          {/* Model selector */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowModelDropdown(!showModelDropdown)}
-              className="model-selector"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: '28px' }}
-            >
-              {MODELS.find(m => m.id === selectedModel)?.label}
-              <ChevronDown size={11} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />
-            </button>
-            {showModelDropdown && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: 4,
-                  background: 'var(--surface-highest)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  zIndex: 50,
-                  minWidth: 140,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                }}
-              >
-                {MODELS.map(model => (
-                  <button
-                    key={model.id}
-                    onClick={() => { setSelectedModel(model.id); setShowModelDropdown(false) }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '8px 14px',
-                      textAlign: 'left',
-                      background: selectedModel === model.id ? 'rgba(99,102,241,0.12)' : 'transparent',
-                      color: selectedModel === model.id ? 'var(--primary)' : 'var(--on-surface-variant)',
-                      fontSize: 12,
-                      fontWeight: selectedModel === model.id ? 700 : 400,
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      cursor: 'pointer',
-                      transition: 'background 0.15s',
-                      border: 'none',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.08)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = selectedModel === model.id ? 'rgba(99,102,241,0.12)' : 'transparent')}
-                  >
-                    {model.label}
-                  </button>
-                ))}
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--surface-low)',
+            flexShrink: 0,
+          }}
+        >
+          {/* Jarvis Identity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <JarvisAvatar />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2
+                  className="font-display font-bold"
+                  style={{ fontSize: 16, color: 'var(--on-surface)', letterSpacing: '-0.02em', margin: 0 }}
+                >
+                  J.A.R.V.I.S.
+                </h2>
+                <span className={`status-dot ${isThinking ? 'status-thinking' : ''}`} style={{ width: 7, height: 7, background: isThinking ? 'var(--secondary)' : 'var(--success)' }} />
               </div>
-            )}
+              <p style={{ fontSize: 11, color: 'var(--on-surface-dim)', margin: 0, fontFamily: "'Space Grotesk', sans-serif" }}>
+                Director de IA · {currentAutonomy.label}
+              </p>
+            </div>
+          </div>
+
+          {/* Right controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Autonomy toggle */}
+            <button
+              onClick={() => setAutonomyMode(m => m === 'full' ? 'safe' : m === 'safe' ? 'confirm' : 'full')}
+              style={{
+                background: currentAutonomy.bg,
+                border: `1px solid ${currentAutonomy.color}30`,
+                borderRadius: 8,
+                padding: '5px 12px',
+                fontSize: 11,
+                fontWeight: 700,
+                color: currentAutonomy.color,
+                cursor: 'pointer',
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: '0.03em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s',
+              }}
+            >
+              <Zap size={11} />
+              {currentAutonomy.label}
+            </button>
+
+            {/* Model selector */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                className="model-selector"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: '28px' }}
+              >
+                {MODELS.find(m => m.id === selectedModel)?.label}
+                <ChevronDown size={11} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />
+              </button>
+              {showModelDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 4,
+                    background: 'var(--surface-highest)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    zIndex: 50,
+                    minWidth: 140,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  }}
+                >
+                  {MODELS.map(model => (
+                    <button
+                      key={model.id}
+                      onClick={() => { setSelectedModel(model.id); setShowModelDropdown(false) }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '8px 14px',
+                        textAlign: 'left',
+                        background: selectedModel === model.id ? 'rgba(99,102,241,0.12)' : 'transparent',
+                        color: selectedModel === model.id ? 'var(--primary)' : 'var(--on-surface-variant)',
+                        fontSize: 12,
+                        fontWeight: selectedModel === model.id ? 700 : 400,
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                        border: 'none',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.08)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = selectedModel === model.id ? 'rgba(99,102,241,0.12)' : 'transparent')}
+                    >
+                      {model.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── Messages ── */}
       <div
         className="flex-1 overflow-y-auto custom-scrollbar"
-        style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}
+        style={{ padding: isCompact ? '16px 16px' : '24px 20px', display: 'flex', flexDirection: 'column', gap: isCompact ? 12 : 20 }}
       >
         {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <MessageBubble key={msg.id} msg={msg} compact={isCompact} />
         ))}
         <div ref={messagesEndRef} />
       </div>
 
       {/* ── Input Area ── */}
-      <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', background: 'var(--surface-low)' }}>
+      <div style={isCompact ? { padding: '12px', borderTop: '1px solid var(--border)' } : { flexShrink: 0, borderTop: '1px solid var(--border)', background: 'var(--surface-low)' }}>
 
-        {/* Quick commands */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            padding: '10px 16px 6px',
-            overflowX: 'auto',
-          }}
-          className="scrollbar-hide"
-        >
-          {QUICK_COMMANDS.map(cmd => (
-            <button
-              key={cmd.label}
-              onClick={() => insertCommand(cmd.label)}
-              className="chip-command"
-              title={cmd.hint}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}
-            >
-              <cmd.icon size={10} />
-              {cmd.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Textarea + Send */}
-        <div style={{ padding: '6px 16px 14px', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Escribe una orden a Jarvis... (Enter para enviar, Shift+Enter para nueva línea)"
-            rows={1}
-            className="chat-input flex-1"
+        {!isCompact && (
+          <div
             style={{
-              padding: '12px 16px',
-              fontSize: 14,
-              lineHeight: '1.5',
-              minHeight: '44px',
-              maxHeight: '120px',
-            }}
-          />
-          <button
-            id="jarvis-send-btn"
-            onClick={sendMessage}
-            disabled={!input.trim() || isThinking}
-            className="btn-primary"
-            style={{
-              width: 44,
-              height: 44,
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              opacity: (!input.trim() || isThinking) ? 0.4 : 1,
-              cursor: (!input.trim() || isThinking) ? 'not-allowed' : 'pointer',
+              gap: 6,
+              padding: '10px 16px 6px',
+              overflowX: 'auto',
             }}
+            className="scrollbar-hide"
           >
-            {isThinking
-              ? <Loader2 size={18} className="animate-spin" style={{ color: 'white' }} />
-              : <Send size={18} style={{ color: 'white' }} />
-            }
-          </button>
-        </div>
+            {QUICK_COMMANDS.map(cmd => (
+              <button
+                key={cmd.label}
+                onClick={() => insertCommand(cmd.label)}
+                className="chip-command"
+                title={cmd.hint}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}
+              >
+                <cmd.icon size={10} />
+                {cmd.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Status bar */}
-        <div
-          className={`autonomy-bar ${autonomyMode === 'full' ? 'active' : ''}`}
-          style={{ background: currentAutonomy.bg }}
-        >
-          <Zap size={12} style={{ color: currentAutonomy.color }} />
-          <span
-            className="font-display"
-            style={{ fontSize: 11, fontWeight: 600, color: currentAutonomy.color, letterSpacing: '0.03em' }}
+        {isCompact ? (
+          <div className="flex bg-black/40 border rounded-md" style={{ borderColor: 'var(--border)' }}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Instrucción Rápida..."
+              className="w-full bg-transparent px-3 py-2 text-sm text-white focus:outline-none transition-colors"
+            />
+            <button onClick={sendMessage} disabled={!input.trim() || isThinking} className="px-3 flex items-center justify-center text-indigo-400 disabled:opacity-50">
+              {isThinking ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '6px 16px 14px', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Escribe una orden a Jarvis... (Enter para enviar, Shift+Enter para nueva línea)"
+              rows={1}
+              className="chat-input flex-1"
+              style={{
+                padding: '12px 16px',
+                fontSize: 14,
+                lineHeight: '1.5',
+                minHeight: '44px',
+                maxHeight: '120px',
+              }}
+            />
+            <button
+              id="jarvis-send-btn"
+              onClick={sendMessage}
+              disabled={!input.trim() || isThinking}
+              className="btn-primary"
+              style={{
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                opacity: (!input.trim() || isThinking) ? 0.4 : 1,
+                cursor: (!input.trim() || isThinking) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {isThinking
+                ? <Loader2 size={18} className="animate-spin" style={{ color: 'white' }} />
+                : <Send size={18} style={{ color: 'white' }} />
+              }
+            </button>
+          </div>
+        )}
+
+        {!isCompact && (
+          <div
+            className={`autonomy-bar ${autonomyMode === 'full' ? 'active' : ''}`}
+            style={{ background: currentAutonomy.bg }}
           >
-            {currentAutonomy.label} activada
-          </span>
-          <span style={{ fontSize: 11, color: 'var(--on-surface-dim)', marginLeft: 'auto' }}>
-            {isThinking ? 'Procesando...' : 'Listo'} · {MODELS.find(m => m.id === selectedModel)?.label}
-          </span>
-        </div>
+            <Zap size={12} style={{ color: currentAutonomy.color }} />
+            <span
+              className="font-display"
+              style={{ fontSize: 11, fontWeight: 600, color: currentAutonomy.color, letterSpacing: '0.03em' }}
+            >
+              {currentAutonomy.label} activada
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--on-surface-dim)', marginLeft: 'auto' }}>
+              {isThinking ? 'Procesando...' : 'Listo'} · {MODELS.find(m => m.id === selectedModel)?.label}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
