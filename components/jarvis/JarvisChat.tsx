@@ -143,7 +143,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
             {isJarvis ? 'J.A.R.V.I.S.' : 'CEO'}
           </span>
           {msg.model && <span style={{ color: 'var(--on-surface-dim)', fontSize: 10 }}>· {msg.model}</span>}
-          <span>{msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+          <span suppressHydrationWarning>{msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
 
         {/* Content */}
