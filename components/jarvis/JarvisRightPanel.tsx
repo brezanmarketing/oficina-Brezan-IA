@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useJarvisChat } from './JarvisChatProvider'
 import {
-  FolderKanban, Users, Clock, ExternalLink, Brain, Activity, Zap
+  FolderKanban, Users, Clock, ExternalLink, Brain, Activity, Zap, ChevronRight, Settings
 } from 'lucide-react'
 
 /* ─── Types ── */
@@ -19,12 +20,14 @@ interface Agent {
   name: string
   role: string
   status: string
+  project_id?: string
   avatar_config?: { gradient?: string }
 }
 interface Memory {
   id: string
   type: string
   content: string
+  project_id?: string
   created_at: string
 }
 interface ActivityItem {
@@ -84,13 +87,19 @@ const MEMORY_TYPE_CONFIG: Record<string, { color: string; bg: string; label: str
 
 /* ─── Main Component ── */
 export default function JarvisRightPanel() {
-  const [activeProject, setActiveProject] = useState<Project | null>(null)
+  const { activeProjectId, setActiveProjectId } = useJarvisChat()
+  const [projects, setProjects]           = useState<Project[]>([])
   const [teamAgents, setTeamAgents]       = useState<Agent[]>([])
   const [memories, setMemories]           = useState<Memory[]>([])
   const [activity, setActivity]           = useState<ActivityItem[]>([])
   const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [isSelectingProject, setIsSelectingProject] = useState(false)
   const [newProject, setNewProject] = useState({ name: '', description: '', directive: '' })
   const supabase = createClient()
+
+  const activeProject = useMemo(() => 
+    projects.find(p => p.id === activeProjectId) || null
+  , [projects, activeProjectId])
 
   useEffect(() => {
     loadData()
@@ -111,37 +120,38 @@ export default function JarvisRightPanel() {
       setActivity(prev => [randomItem, ...prev.slice(0, 4)])
     }, 8000)
     return () => clearInterval(interval)
-  }, [])
+  }, [activeProjectId])
 
   async function loadData() {
-    // Load active project
-    const { data: projects } = await supabase
+    // Load all projects
+    const { data: allProjects } = await supabase
       .from('projects')
       .select('id, name, description, status')
-      .eq('status', 'active')
-      .limit(1)
-      .single()
+      .neq('status', 'deleted')
+      .order('created_at', { ascending: false })
 
-    if (projects) {
-        setActiveProject({ ...projects, progress: Math.floor(Math.random() * 50) + 30 })
-    } else {
-        setActiveProject(null)
+    if (allProjects) {
+      setProjects(allProjects.map(p => ({ ...p, progress: Math.floor(Math.random() * 50) + 30 })))
     }
 
-    // Load agents (excluding Jarvis system agent)
-    const { data: agents } = await supabase
-      .from('agents')
-      .select('id, name, role, status, avatar_config')
+    // Load agents for active project (or recent ones if no active)
+    let query = supabase.from('agents').select('id, name, role, status, avatar_config, project_id')
+    if (activeProjectId) {
+      query = query.eq('project_id', activeProjectId)
+    }
+    const { data: agents } = await query
       .neq('name', 'J.A.R.V.I.S.')
       .limit(4)
       .order('created_at', { ascending: false })
 
     if (agents) setTeamAgents(agents)
 
-    // Load recent memory
-    const { data: mem } = await supabase
-      .from('jarvis_memory')
-      .select('id, type, content, created_at')
+    // Load recent memory (filtered by project if active)
+    let memQuery = supabase.from('jarvis_memory').select('id, type, content, created_at, project_id')
+    if (activeProjectId) {
+      memQuery = memQuery.eq('project_id', activeProjectId)
+    }
+    const { data: mem } = await memQuery
       .order('created_at', { ascending: false })
       .limit(3)
 
@@ -152,14 +162,14 @@ export default function JarvisRightPanel() {
     e.preventDefault()
     if (!newProject.name.trim()) return
 
-    const { error } = await supabase.from('projects').insert([
+    const { data, error } = await supabase.from('projects').insert([
       {
         name: newProject.name,
         description: newProject.description,
         directive: newProject.directive,
         status: 'active'
       }
-    ])
+    ]).select()
 
     if (error) {
       console.error('Error creating project:', error)
@@ -167,6 +177,9 @@ export default function JarvisRightPanel() {
     } else {
       setIsCreatingProject(false)
       setNewProject({ name: '', description: '', directive: '' })
+      if (data && data[0]) {
+        setActiveProjectId(data[0].id)
+      }
       await loadData()
     }
   }
@@ -202,49 +215,14 @@ export default function JarvisRightPanel() {
           >
             War Room Activo
           </span>
-          <FolderKanban size={12} style={{ color: 'var(--on-surface-dim)' }} />
-        </div>
-
-        {activeProject ? (
-          <div
-            className="card-hud"
-            style={{ padding: 14, cursor: 'pointer', borderLeft: '2px solid var(--primary-container)' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-              <p
-                className="font-display font-semibold"
-                style={{ fontSize: 13, color: 'var(--on-surface)', margin: 0, lineHeight: 1.3 }}
-              >
-                {activeProject.name}
-              </p>
-              <span className={statusLabel[activeProject.status]?.class || 'badge-planning'}>
-                {statusLabel[activeProject.status]?.label || 'PLANIF.'}
-              </span>
-            </div>
-            {activeProject.description && (
-              <p style={{ fontSize: 11, color: 'var(--on-surface-dim)', margin: '0 0 10px', lineHeight: 1.4 }}>
-                {activeProject.description.slice(0, 80)}...
-              </p>
-            )}
-            <div style={{ marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--on-surface-dim)', fontFamily: "'Space Grotesk', sans-serif" }}>Progreso Global</span>
-                <span className="font-display font-bold" style={{ fontSize: 11, color: 'var(--primary)' }}>
-                  {activeProject.progress}%
-                </span>
-              </div>
-              <div className="progress-hud">
-                <div className="progress-hud-fill" style={{ width: `${activeProject.progress}%` }} />
-              </div>
-            </div>
-            <button
-              className="btn-ghost"
-              style={{ fontSize: 11, padding: '5px 10px', width: '100%', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-            >
-              <ExternalLink size={10} /> Abrir War Room
+          <div className="flex gap-2">
+            <button onClick={() => setIsSelectingProject(!isSelectingProject)} className="hover:text-primary transition-colors">
+              <FolderKanban size={12} style={{ color: activeProjectId ? 'var(--primary)' : 'var(--on-surface-dim)' }} />
             </button>
           </div>
-        ) : isCreatingProject ? (
+        </div>
+
+        {isCreatingProject ? (
           <div className="card-hud" style={{ padding: 14 }}>
             <form onSubmit={handleCreateProject} className="flex flex-col gap-3">
               <p className="font-display font-bold text-white text-xs text-center border-b border-white/5 pb-2">NUEVO PROYECTO</p>
@@ -272,11 +250,79 @@ export default function JarvisRightPanel() {
               </div>
             </form>
           </div>
+        ) : isSelectingProject ? (
+          <div className="card-hud overflow-hidden flex flex-col gap-1" style={{ padding: '8px 4px' }}>
+            <p className="px-3 py-1 text-[9px] font-bold text-indigo-400 tracking-widest uppercase">Seleccionar War Room</p>
+            <div className="max-h-[200px] overflow-y-auto custom-scrollbar px-2">
+              {projects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setActiveProjectId(p.id)
+                    setIsSelectingProject(false)
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg mb-1 flex items-center justify-between group transition-all ${activeProjectId === p.id ? 'bg-indigo-500/20 border border-indigo-500/30' : 'hover:bg-white/5 border border-transparent'}`}
+                >
+                  <div>
+                    <p className={`text-xs font-semibold ${activeProjectId === p.id ? 'text-indigo-400' : 'text-white'}`}>{p.name}</p>
+                    <p className="text-[10px] text-gray-500 truncate w-40">{p.status}</p>
+                  </div>
+                  <ChevronRight size={14} className={`${activeProjectId === p.id ? 'text-indigo-500' : 'text-gray-600 opacity-0 group-hover:opacity-100'}`} />
+                </button>
+              ))}
+              <button 
+                onClick={() => { setIsCreatingProject(true); setIsSelectingProject(false); }}
+                className="w-full text-center py-2 text-[10px] font-bold text-gray-400 hover:text-white border-t border-white/5 mt-1"
+              >
+                + NUEVO PROYECTO
+              </button>
+            </div>
+          </div>
+        ) : activeProject ? (
+          <div
+            className="card-hud"
+            style={{ padding: 14, cursor: 'pointer', borderLeft: '2px solid var(--primary-container)' }}
+            onClick={() => setIsSelectingProject(true)}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+              <p
+                className="font-display font-semibold"
+                style={{ fontSize: 13, color: 'var(--on-surface)', margin: 0, lineHeight: 1.3 }}
+              >
+                {activeProject.name}
+              </p>
+              <span className={statusLabel[activeProject.status]?.class || 'badge-planning'}>
+                {statusLabel[activeProject.status]?.label || 'PLANIF.'}
+              </span>
+            </div>
+            {activeProject.description && (
+              <p style={{ fontSize: 11, color: 'var(--on-surface-dim)', margin: '0 0 10px', lineHeight: 1.4 }}>
+                {activeProject.description.length > 80 ? activeProject.description.slice(0, 80) + '...' : activeProject.description}
+              </p>
+            )}
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--on-surface-dim)', fontFamily: "'Space Grotesk', sans-serif" }}>Progreso Global</span>
+                <span className="font-display font-bold" style={{ fontSize: 11, color: 'var(--primary)' }}>
+                  {activeProject.progress}%
+                </span>
+              </div>
+              <div className="progress-hud">
+                <div className="progress-hud-fill" style={{ width: `${activeProject.progress}%` }} />
+              </div>
+            </div>
+            <button
+              className="btn-ghost"
+              style={{ fontSize: 11, padding: '5px 10px', width: '100%', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+            >
+              <Settings size={10} /> Configurar War Room
+            </button>
+          </div>
         ) : (
           <div className="card-hud" style={{ padding: 14, textAlign: 'center' }}>
             <p style={{ fontSize: 12, color: 'var(--on-surface-dim)', margin: 0 }}>Sin proyecto activo</p>
             <button onClick={() => setIsCreatingProject(true)} className="btn-primary w-full flex items-center justify-center" style={{ fontSize: 11, padding: '6px 12px', marginTop: 10 }}>
-              + Nuevo Proyecto
+              + Iniciar War Room
             </button>
           </div>
         )}

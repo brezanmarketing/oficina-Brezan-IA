@@ -1,61 +1,103 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Plus, MoreVertical, CheckCircle2, Circle, Clock, Flame, Users, Bot, X, FolderKanban } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Plus, MoreVertical, CheckCircle2, Circle, Clock, Flame, Users, Bot, X, FolderKanban, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import JarvisChat from '@/components/jarvis/JarvisChat'
+import { useJarvisChat } from './JarvisChatProvider'
 
 export default function ProjectWorkspace() {
+  const { activeProjectId } = useJarvisChat()
   const [project, setProject] = useState<any>(null)
   const [tasks, setTasks] = useState<any[]>([])
   const [agents, setAgents] = useState<any[]>([])
+  const [automations, setAutomations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchWorkspace()
-
-    const channel = supabase.channel('tasks_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
-        fetchWorkspace()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
-        fetchWorkspace()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+  const fetchWorkspace = useCallback(async () => {
+    if (!activeProjectId) {
+      setProject(null)
+      setTasks([])
+      setAgents([])
+      setAutomations([])
+      setLoading(false)
+      return
     }
-  }, [])
 
-  const fetchWorkspace = async () => {
     try {
-      const { data: pData } = await supabase.from('projects').select('*').limit(1).single()
+      // Fetch specific project
+      const { data: pData } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', activeProjectId)
+        .single()
       
-      let tData: any[] = []
-      if (pData) {
-        // Fetch tasks
-        const { data } = await supabase.from('tasks').select('*')
-        tData = data || []
-      }
-
-      const { data: aData } = await supabase.from('agents').select('*')
-
       if (pData) {
         setProject(pData)
-        setTasks(tData)
+        
+        // Fetch tasks for this project
+        const { data: tData } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('project_id', activeProjectId)
+        setTasks(tData || [])
+
+        // Fetch agents for this project
+        const { data: aData } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('project_id', activeProjectId)
         setAgents(aData || [])
+
+        // Fetch automations (if table exists)
+        const { data: autoData } = await supabase
+          .from('automations')
+          .select('*')
+          .eq('project_id', activeProjectId)
+        setAutomations(autoData || [])
+      } else {
+        setProject(null)
       }
     } catch (error) {
       console.error('Error loading workspace:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeProjectId, supabase])
+
+  useEffect(() => {
+    fetchWorkspace()
+
+    // Subscribe to changes related to this project
+    const channel = supabase.channel(`project-room-${activeProjectId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'tasks',
+        filter: `project_id=eq.${activeProjectId}` 
+      }, () => fetchWorkspace())
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'projects',
+        filter: `id=eq.${activeProjectId}` 
+      }, () => fetchWorkspace())
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'agents',
+        filter: `project_id=eq.${activeProjectId}` 
+      }, () => fetchWorkspace())
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [activeProjectId, fetchWorkspace, supabase])
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId)
@@ -83,7 +125,7 @@ export default function ProjectWorkspace() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newTaskTitle.trim()) return
+    if (!newTaskTitle.trim() || !activeProjectId) return
 
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -91,7 +133,7 @@ export default function ProjectWorkspace() {
       title: newTaskTitle,
       status: 'pending',
       user_id: user?.id || null,
-      project_id: project?.id || null
+      project_id: activeProjectId
     }
 
     const { data, error } = await supabase.from('tasks').insert(newTask).select().single()
@@ -119,9 +161,13 @@ export default function ProjectWorkspace() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center" style={{ background: 'var(--void)' }}>
         <div className="max-w-md text-center">
-          <FolderKanban className="w-12 h-12 mx-auto mb-4 text-gray-500 opacity-50" />
-          <h2 className="text-xl font-display font-bold text-white mb-2">Sin Proyecto Activo</h2>
-          <p className="text-gray-400 text-sm mb-6">El War Room está en espera. Usa el panel derecho para crear o seleccionar un proyecto con su directiva, y los agentes entrarán en línea.</p>
+          <div className="ambient-orb-top absolute opacity-20" style={{ left: '50%', transform: 'translateX(-50%)', top: '20%' }} />
+          <FolderKanban className="w-16 h-16 mx-auto mb-6 text-indigo-500/50 animate-pulse" />
+          <h2 className="text-2xl font-display font-bold text-white mb-3">War Room en Espera</h2>
+          <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+            No hay un proyecto activo seleccionado. <br/>
+            Accede al panel de **Jarvis** en la derecha para iniciar una nueva misión o retomar una existente.
+          </p>
         </div>
       </div>
     )
@@ -191,6 +237,7 @@ export default function ProjectWorkspace() {
         {/* RIGHT PANEL: CONTEXT & AGENTS */}
         <div className="w-80 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
           
+          {/* AGENTS */}
           <div className="rounded-xl border p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
             <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
               <Users size={16} style={{ color: 'var(--primary)' }} />
@@ -211,7 +258,40 @@ export default function ProjectWorkspace() {
                   </div>
                 )
               })}
-              {agents.length === 0 && <span className="text-sm text-gray-500">No hay agentes.</span>}
+              {agents.length === 0 && <span className="text-sm text-gray-500">No hay agentes asignados.</span>}
+            </div>
+          </div>
+
+          {/* AUTOMATIONS */}
+          <div className="rounded-xl border p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <Zap size={16} style={{ color: 'var(--warning)' }} />
+              Automatizaciones
+            </h3>
+            <div className="flex flex-col gap-3">
+              {automations.map(auto => (
+                <div key={auto.id} className="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-white/5">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white truncate">{auto.name}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{auto.description || 'Proceso activo'}</div>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      const { error } = await supabase.from('automations').update({ isActive: !auto.isActive }).eq('id', auto.id)
+                      if (!error) fetchWorkspace()
+                    }}
+                    className={`w-8 h-4 rounded-full relative transition-colors ${auto.isActive ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                  >
+                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${auto.isActive ? 'left-4.5' : 'left-0.5'}`} />
+                  </button>
+                </div>
+              ))}
+              {automations.length === 0 && (
+                <div className="text-center py-4 border border-dashed border-white/10 rounded-lg">
+                  <p className="text-[10px] text-gray-500 mb-2">Sin flujos activos</p>
+                  <button className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider">+ Configurar flujo</button>
+                </div>
+              )}
             </div>
           </div>
 

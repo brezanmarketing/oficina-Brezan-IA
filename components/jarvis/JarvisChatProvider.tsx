@@ -45,9 +45,11 @@ interface JarvisChatContextValue {
   input: string
   isThinking: boolean
   selectedModel: string
+  activeProjectId: string | null
   autonomyMode: 'full' | 'safe' | 'confirm'
   setInput: React.Dispatch<React.SetStateAction<string>>
   setSelectedModel: React.Dispatch<React.SetStateAction<string>>
+  setActiveProjectId: (id: string | null) => void
   setAutonomyMode: React.Dispatch<React.SetStateAction<'full' | 'safe' | 'confirm'>>
   sendMessage: () => Promise<void>
   insertCommand: (cmd: string) => void
@@ -64,10 +66,26 @@ export function JarvisChatProvider({ children }: { children: React.ReactNode }) 
   const [input, setInput] = useState('')
   const [isThinking, setIsThinking] = useState(false)
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
+  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null)
   const [autonomyMode, setAutonomyMode] = useState<'full' | 'safe' | 'confirm'>('full')
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Load active project from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('jarvis_active_project_id')
+    if (saved) setActiveProjectIdState(saved)
+  }, [])
+
+  const setActiveProjectId = useCallback((id: string | null) => {
+    setActiveProjectIdState(id)
+    if (id) {
+      localStorage.setItem('jarvis_active_project_id', id)
+    } else {
+      localStorage.removeItem('jarvis_active_project_id')
+    }
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -112,10 +130,6 @@ export function JarvisChatProvider({ children }: { children: React.ReactNode }) 
         .slice(-20)
         .map(m => ({ role: m.role === 'jarvis' ? 'assistant' : 'user', content: m.content }))
 
-      const { createClient } = await import('@/lib/supabase/client')
-      const supCli = createClient()
-      const { data: pData } = await supCli.from('projects').select('id').eq('status', 'active').limit(1).single()
-
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +139,7 @@ export function JarvisChatProvider({ children }: { children: React.ReactNode }) 
           model: selectedModel,
           history,
           autonomyLevel: autonomyMode,
-          projectId: pData?.id,
+          projectId: activeProjectId,
         }),
       })
 
@@ -151,7 +165,7 @@ export function JarvisChatProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setIsThinking(false)
     }
-  }, [input, isThinking, messages, selectedModel, autonomyMode])
+  }, [input, isThinking, messages, selectedModel, autonomyMode, activeProjectId])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -170,9 +184,11 @@ export function JarvisChatProvider({ children }: { children: React.ReactNode }) 
     input,
     isThinking,
     selectedModel,
+    activeProjectId,
     autonomyMode,
     setInput,
     setSelectedModel,
+    setActiveProjectId,
     setAutonomyMode,
     sendMessage,
     insertCommand,
