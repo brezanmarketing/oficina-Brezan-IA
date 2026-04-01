@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, MoreVertical, CheckCircle2, Circle, Clock, Flame, Users, Bot, X } from 'lucide-react'
+import { Plus, MoreVertical, CheckCircle2, Circle, Clock, Flame, Users, Bot, X, FolderKanban } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import JarvisChat from '@/components/jarvis/JarvisChat'
 
@@ -20,6 +20,9 @@ export default function ProjectWorkspace() {
 
     const channel = supabase.channel('tasks_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+        fetchWorkspace()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
         fetchWorkspace()
       })
       .subscribe()
@@ -105,8 +108,21 @@ export default function ProjectWorkspace() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--void)' }}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-4" style={{ background: 'var(--void)' }}>
         <div className="animate-pulse-dot" style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--primary)' }} />
+        <span className="text-gray-400 text-sm font-mono">Sincronizando War Room...</span>
+      </div>
+    )
+  }
+
+  if (!project) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center" style={{ background: 'var(--void)' }}>
+        <div className="max-w-md text-center">
+          <FolderKanban className="w-12 h-12 mx-auto mb-4 text-gray-500 opacity-50" />
+          <h2 className="text-xl font-display font-bold text-white mb-2">Sin Proyecto Activo</h2>
+          <p className="text-gray-400 text-sm mb-6">El War Room está en espera. Usa el panel derecho para crear o seleccionar un proyecto con su directiva, y los agentes entrarán en línea.</p>
+        </div>
       </div>
     )
   }

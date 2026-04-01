@@ -88,6 +88,8 @@ export default function JarvisRightPanel() {
   const [teamAgents, setTeamAgents]       = useState<Agent[]>([])
   const [memories, setMemories]           = useState<Memory[]>([])
   const [activity, setActivity]           = useState<ActivityItem[]>([])
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [newProject, setNewProject] = useState({ name: '', description: '', directive: '' })
   const supabase = createClient()
 
   useEffect(() => {
@@ -120,7 +122,11 @@ export default function JarvisRightPanel() {
       .limit(1)
       .single()
 
-    if (projects) setActiveProject({ ...projects, progress: Math.floor(Math.random() * 50) + 30 })
+    if (projects) {
+        setActiveProject({ ...projects, progress: Math.floor(Math.random() * 50) + 30 })
+    } else {
+        setActiveProject(null)
+    }
 
     // Load agents (excluding Jarvis system agent)
     const { data: agents } = await supabase
@@ -140,6 +146,29 @@ export default function JarvisRightPanel() {
       .limit(3)
 
     if (mem) setMemories(mem)
+  }
+
+  async function handleCreateProject(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newProject.name.trim()) return
+
+    const { error } = await supabase.from('projects').insert([
+      {
+        name: newProject.name,
+        description: newProject.description,
+        directive: newProject.directive,
+        status: 'active'
+      }
+    ])
+
+    if (error) {
+      console.error('Error creating project:', error)
+      alert('Error en Supabase: ' + JSON.stringify(error))
+    } else {
+      setIsCreatingProject(false)
+      setNewProject({ name: '', description: '', directive: '' })
+      await loadData()
+    }
   }
 
   const statusLabel: Record<string, { label: string; class: string }> = {
@@ -215,10 +244,38 @@ export default function JarvisRightPanel() {
               <ExternalLink size={10} /> Abrir War Room
             </button>
           </div>
+        ) : isCreatingProject ? (
+          <div className="card-hud" style={{ padding: 14 }}>
+            <form onSubmit={handleCreateProject} className="flex flex-col gap-3">
+              <p className="font-display font-bold text-white text-xs text-center border-b border-white/5 pb-2">NUEVO PROYECTO</p>
+              
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-mono text-gray-400">Nombre</label>
+                <input required autoFocus value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-indigo-500" placeholder="Ej. Jarvis v2.0" />
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-mono text-gray-400">Descripción (Opcional)</label>
+                <input value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-indigo-500" placeholder="Contexto general" />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-mono text-indigo-400 flex items-center justify-between">
+                  Directiva Principal <Zap size={8} />
+                </label>
+                <textarea required value={newProject.directive} onChange={e => setNewProject({...newProject, directive: e.target.value})} rows={3} className="bg-black/40 border border-indigo-500/30 rounded px-2 py-1.5 text-xs text-indigo-100 outline-none focus:border-indigo-500 resize-none" placeholder="Instrucción central para todos los agentes. Ej: 'Rediseñar el dashboard sin romper features existentes.'" />
+              </div>
+
+              <div className="flex gap-2 mt-2">
+                <button type="button" onClick={() => setIsCreatingProject(false)} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1.5 text-[10px] text-gray-300 transition-colors uppercase font-bold tracking-wider">Cancelar</button>
+                <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-500 rounded py-1.5 text-[10px] text-white transition-colors uppercase font-bold tracking-wider" style={{boxShadow: '0 0 10px rgba(99,102,241,0.3)'}}>Iniciar</button>
+              </div>
+            </form>
+          </div>
         ) : (
           <div className="card-hud" style={{ padding: 14, textAlign: 'center' }}>
             <p style={{ fontSize: 12, color: 'var(--on-surface-dim)', margin: 0 }}>Sin proyecto activo</p>
-            <button className="btn-primary" style={{ fontSize: 11, padding: '6px 12px', marginTop: 8 }}>
+            <button onClick={() => setIsCreatingProject(true)} className="btn-primary w-full flex items-center justify-center" style={{ fontSize: 11, padding: '6px 12px', marginTop: 10 }}>
               + Nuevo Proyecto
             </button>
           </div>

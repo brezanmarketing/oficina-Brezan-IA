@@ -52,7 +52,26 @@ export async function POST(req: NextRequest) {
             .eq('id', agentId)
             .single()
 
-        const baseSystemPrompt = agentData?.prompt || 'Eres J.A.R.V.I.S., el agente central de la oficina.'
+        let baseSystemPrompt = agentData?.prompt || 'Eres J.A.R.V.I.S., el agente central de la oficina.'
+
+        // 1.5 Obtener Contexto del Proyecto (Directiva) si hay projectId
+        let projectContextStr = ''
+        if (projectId) {
+            const { data: projectData } = await supabase
+                .from('projects')
+                .select('name, description, directive')
+                .eq('id', projectId)
+                .single()
+            
+            if (projectData) {
+                projectContextStr = `
+## CONTEXTO DE PROYECTO ACTUAL (ESTÁS TRABAJANDO AQUÍ):
+- **Nombre:** ${projectData.name}
+- **Descripción:** ${projectData.description || 'Sin descripción'}
+- **DIRECTIVA PRINCIPAL (SIGUE ESTO ESTRICTAMENTE):** ${projectData.directive || 'Sin directiva específica'}
+`
+            }
+        }
 
         // 2. Obtener Directorio de Agentes
         const { data: agentsList } = await supabase.from('agents').select('name, role')
@@ -90,6 +109,7 @@ export async function POST(req: NextRequest) {
         // 5. Preparar System Prompt final
         const systemPrompt = `
 ${baseSystemPrompt}
+${projectContextStr}
 
 ## DIRECTORIO DEL EQUIPO ACTUAL:
 ${teamDir}

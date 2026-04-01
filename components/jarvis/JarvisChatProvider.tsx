@@ -112,6 +112,10 @@ export function JarvisChatProvider({ children }: { children: React.ReactNode }) 
         .slice(-20)
         .map(m => ({ role: m.role === 'jarvis' ? 'assistant' : 'user', content: m.content }))
 
+      const { createClient } = await import('@/lib/supabase/client')
+      const supCli = createClient()
+      const { data: pData } = await supCli.from('projects').select('id').eq('status', 'active').limit(1).single()
+
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -121,6 +125,7 @@ export function JarvisChatProvider({ children }: { children: React.ReactNode }) 
           model: selectedModel,
           history,
           autonomyLevel: autonomyMode,
+          projectId: pData?.id,
         }),
       })
 
